@@ -1,34 +1,63 @@
-import pathlib
-from setuptools import setup
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-# The directory containing this file
-HERE = pathlib.Path(__file__).parent
+"""The setup script."""
 
-# The text of the README file
-README = (HERE / "README.md").read_text()
+from setuptools import setup, find_packages
 
-# This call to setup() does all the work
+with open('README.md') as readme_file:
+    readme = readme_file.read()
+
+with open('HISTORY.rst') as history_file:
+    history = history_file.read()
+
+requirements = [
+    'setuptools',
+    'numpy',
+    'pandas',
+    'tqdm',
+    'seaborn',
+    'fastbetabino',
+    'sklearn',
+    'matplotlib',
+    'scikit-learn==0.19.2',
+    'kipoiseq>=0.3.0',
+    'mmsplice_scripts'
+]
+
+setup_requirements = ['pytest-runner', ]
+
+test_requirements = ['pytest', 'pytest-benchmark']
+
 setup(
-    name="count_table",
-    version="1.0.0",
-    description="Count table for sequencing data",
-    long_description=README,
-    long_description_content_type="text/markdown",
-    url="git@gitlab.cmm.in.tum.de:gagneurlab/count_table.git",
     author="Hasan Celik",
     author_email="wagnern@in.tum.de",
-    license="MIT",
     classifiers=[
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
+        'Development Status :: 2 - Pre-Alpha',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Natural Language :: English',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
-    packages=["count_table"],
+    description="Count table for sequencing data",
+    install_requires=requirements,
+    license="MIT license",
+    long_description=readme + '\n\n' + history,
+    long_description_content_type='text/markdown',
+    entry_points='''
+        [console_scripts]
+        mmsplice=mmsplice.main:cli
+    ''',
     include_package_data=True,
-    install_requires=["feedparser", "html2text"],
-    entry_points={
-        "console_scripts": [
-            "realpython=reader.__main__:main",
-        ]
-    },
+    keywords='count_table',
+    name='count_table',
+    packages=find_packages(include=['count_table']),
+    setup_requires=setup_requirements,
+    test_suite='tests',
+    tests_require=test_requirements,
+    url='https://github.com/gagneurlab/count_table',
+    version='1.0.0',
+    zip_safe=False
 )

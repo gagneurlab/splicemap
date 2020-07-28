@@ -6,8 +6,8 @@ from fastbetabino import fit_alpha_beta
 from sklearn.mixture import GaussianMixture
 import matplotlib.pyplot as plt
 from kipoiseq.extractors import FastaStringExtractor
-from mmsplice_scripts.dataclasses.junction import Junction
-from mmsplice_scripts.data.vcf_utils import get_variants_around_junction
+from count_table.dataclasses import Junction
+from count_table.utils import get_variants_around_junction
 # from mmsplice.utils import logit
 # from mmsplice_scripts.data.utils import clip
 
