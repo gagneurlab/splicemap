@@ -17,15 +17,15 @@ requirements = [
     'pandas',
     'tqdm',
     'seaborn',
-    'fastbetabino',
     'sklearn',
     'matplotlib',
     'kipoiseq>=0.3.0',
 ]
 
+
 setup_requirements = ['pytest-runner', ]
 
-test_requirements = ['pytest']
+test_requirements = ['pytest', 'pytest-benchmark']
 
 setup(
     author="Hasan Celik",
@@ -49,6 +49,7 @@ setup(
     name='count_table',
     packages=find_packages(include=['count_table']),
     setup_requires=setup_requirements,
+    dependency_links=['http://github.com/lfiaschi/fastbetabino/tarball/master#egg=fastbetabino']
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/gagneurlab/count_table',
