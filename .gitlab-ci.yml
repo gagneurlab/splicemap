@@ -16,7 +16,7 @@ test_async:
     - virtualenv venv
     - source venv/bin/activate
     - pip install -e .
-    - pip install pytest pytest-runner
+    - pip install pytest pytest-runner pytest-mock
     - python -V
 
   script:
