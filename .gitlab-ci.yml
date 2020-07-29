@@ -12,6 +12,7 @@ test_async:
   before_script:
     - apt update
     - apt install gcc -y
+    - pip install virtualenv
     - virtualenv venv
     - source venv/bin/activate
     - pip install -e .
