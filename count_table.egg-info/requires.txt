@@ -1,9 +1,0 @@
-setuptools
-numpy
-pandas
-tqdm
-seaborn
-fastbetabino
-sklearn
-matplotlib
-kipoiseq>=0.3.0
