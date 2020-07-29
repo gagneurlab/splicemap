@@ -49,7 +49,7 @@ setup(
     name='count_table',
     packages=find_packages(include=['count_table']),
     setup_requires=setup_requirements,
-    dependency_links=['http://github.com/lfiaschi/fastbetabino/tarball/master#egg=fastbetabino']
+    dependency_links=['http://github.com/lfiaschi/fastbetabino/tarball/master#egg=fastbetabino'],
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/gagneurlab/count_table',
