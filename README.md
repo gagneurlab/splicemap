@@ -4,7 +4,8 @@
 
 A package to process split-read counts for splicing. 
 CountTable requires a specific format of RNA-seq split-read count data, namely: 'Chromosome', 'Start', 'End', 'Strand', 'samples':
-.
+
+
 |   Chromosome |   Start |    End | Strand   |   GTEX-111FC |   GTEX-1128S |   GTEX-117XS |   GTEX-1192X |   GTEX-11DXW |   GTEX-11DXY |
 |-------------:|--------:|-------:|:---------|-------------:|-------------:|-------------:|-------------:|-------------:|-------------:|
 |            1 |   17729 |  17733 | +        |            9 |            0 |            0 |            0 |            0 |            7 |
