@@ -25,7 +25,7 @@ requirements = [
 
 setup_requirements = ['pytest-runner', ]
 
-test_requirements = ['pytest', 'pytest-benchmark']
+test_requirements = ['pytest']
 
 setup(
     author="Hasan Celik",

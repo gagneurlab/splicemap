@@ -1,0 +1,25 @@
+image: continuumio/miniconda
+
+stages:
+  - test
+
+test_async:
+  stage: test
+
+  tags:
+    - docker
+
+  before_script:
+    - apt update
+    - apt install gcc -y
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install -e .
+    - pip install pytest pytest-runner
+    - python -V
+
+  script:
+    - python -m pytest tests/
+
+  after_script:
+    - rm -rf *.egg-info .eggs venv
