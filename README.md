@@ -26,3 +26,8 @@ Install all packages from setup.py:
 pip install -e .
 ```
 -----------------
+
+### Example code
+-------------------
+
+Check [notebooks/example.ipynb](https://gitlab.cmm.in.tum.de/gagneurlab/count_table/-/tree/master/notebooks/example.ipynb)
