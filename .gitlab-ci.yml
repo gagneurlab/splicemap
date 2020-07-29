@@ -1,4 +1,4 @@
-image: continuumio/miniconda
+image: python:3.6
 
 stages:
   - test
