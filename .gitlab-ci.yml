@@ -15,7 +15,7 @@ test_async:
     - pip install virtualenv
     - virtualenv venv
     - source venv/bin/activate
-    - pip install pytest pytest-runner pytest-mock Cython
+    - pip install pytest pytest-runner pytest-mock cython cyvcf2
     - pip install -e .
     - python -V
 
