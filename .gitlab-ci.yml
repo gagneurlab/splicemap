@@ -1,0 +1,26 @@
+image: python:3.6
+
+stages:
+  - test
+
+test_async:
+  stage: test
+
+  tags:
+    - docker
+
+  before_script:
+    - apt update
+    - apt install gcc -y
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install pytest pytest-runner pytest-mock cython cyvcf2
+    - pip install -e .
+    - python -V
+
+  script:
+    - python -m pytest tests/
+
+  after_script:
+    - rm -rf *.egg-info .eggs venv
