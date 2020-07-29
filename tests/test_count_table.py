@@ -277,19 +277,19 @@ def test_event3_median_filter(count_table):
 def test_CountTable_ref_psi5(count_table):
     df = count_table.ref_psi5(method='beta_binomial')
     np.testing.assert_almost_equal(
-        df['psi'].tolist(), [1, 1, 1, 0.4, 0.6],
+        df['ref_psi'].tolist(), [1, 1, 1, 0.4, 0.6],
         decimal=2
     )
 
     df = count_table.ref_psi5(method='k/n')
     np.testing.assert_almost_equal(
-        df['psi'].tolist(), [1, 1, 1, 0.4, 0.6],
+        df['ref_psi'].tolist(), [1, 1, 1, 0.4, 0.6],
         decimal=2
     )
 
     df = count_table.ref_psi5(method='mean')
     np.testing.assert_almost_equal(
-        df['psi'].tolist(), [1, 1, 1, 0.44, 0.55],
+        df['ref_psi'].tolist(), [1, 1, 1, 0.44, 0.55],
         decimal=2
     )
 
@@ -297,19 +297,19 @@ def test_CountTable_ref_psi5(count_table):
 def test_CountTable_ref_psi3(count_table):
     df = count_table.ref_psi3(method='beta_binomial')
     np.testing.assert_almost_equal(
-        df['psi'].tolist(), [.65, .35, 1, 1, 1],
+        df['ref_psi'].tolist(), [.65, .35, 1, 1, 1],
         decimal=2
     )
 
     df = count_table.ref_psi3(method='k/n')
     np.testing.assert_almost_equal(
-        df['psi'].tolist(), [.65, .35, 1, 1, 1],
+        df['ref_psi'].tolist(), [.65, .35, 1, 1, 1],
         decimal=2
     )
 
     df = count_table.ref_psi3(method='mean')
     np.testing.assert_almost_equal(
-        df['psi'].tolist(), [0.61, 0.38, 1, 1, 1],
+        df['ref_psi'].tolist(), [0.61, 0.38, 1, 1, 1],
         decimal=2
     )
 
@@ -499,7 +499,7 @@ def test_CountTable_plot_psi5(count_table, mocker):
     count_table.plot_psi5('chr2:10-50:-')
     args, kwargs = plot.call_args_list[0]
     np.testing.assert_almost_equal(
-        kwargs['data']['psi'], [0.5, 0.5, 0.3333333])
+        kwargs['data']['ref_psi'], [0.5, 0.5, 0.3333333])
     # import matplotlib.pyplot as plt
     # plt.show()
 
@@ -518,7 +518,7 @@ def test_CountTable_plot_psi3(count_table, mocker):
 #     plt.show()    
     args, kwargs = plot.call_args_list[0]
     np.testing.assert_almost_equal(
-        kwargs['data']['psi'], [0.5, 0.666666, 0.666666],
+        kwargs['data']['ref_psi'], [0.5, 0.666666, 0.666666],
         decimal=6)
 
 
@@ -526,7 +526,7 @@ def test_CountTable__psi_variants(count_table):
     vcf = MultiSampleVCF(vcf_file)
     df = pd.DataFrame({
         'sample': ['NA00002', 'NA00003', 's1'],
-        'psi': [0.5, 0.3, 0.1]
+        'ref_psi': [0.5, 0.3, 0.1]
     }).set_index('sample')
     variants = [
         vcf.get_variant('chr1:4:T>C'),
@@ -538,8 +538,8 @@ def test_CountTable__psi_variants(count_table):
         df_variants,
         pd.DataFrame({
             'sample': ['NA00002', 'NA00003', 's1'] * 2,
-            'psi': [0.5, 0.3, 0.1] * 2,
-            'genotype': ['NN', 'aa', 'NN', 'aa', 'NN', 'NN'],
+            'ref_psi': [0.5, 0.3, 0.1] * 2,
+            'genotype': ['AA', 'aa', 'NN', 'aa', 'AA', 'NN'],
             'variant': ['chr1:4:T>C'] * 3 + ['chr1:25:AACG>GA'] * 3
         }).set_index('sample')
     )

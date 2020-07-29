@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from kipoiseq.extractors import FastaStringExtractor
 from count_table.dataclasses import Junction
 from count_table.utils import get_variants_around_junction
+import colorsys
+import matplotlib.colors as mc
 # from mmsplice.utils import logit
 # from mmsplice_scripts.data.utils import clip
 
@@ -237,13 +239,21 @@ class CountTable:
         return self._plot_kn(self.kn3(junction), log=log, highlight=highlight,
                              highlight_name=highlight_name)
 
-    def _plot_psi(self, df, x=None, hue=None, min_read=1, swarm=True,
+    def _lighten_color(self, color, amount=0.5):  
+        try:
+            c = mc.cnames[color]
+        except:
+            c = color
+        c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+        return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
+
+    def _plot_psi(self, df, x=None, hue=None, min_read=1, swarm=False,
                   plot_type='boxplot', ylim=True):
         df = df[df['n'] >= min_read]
         if df.shape[0] == 0:
             raise ValueError('psi is not defined for all the junctions'
                              'because of the low n')
-        df['psi'] = df['k'] / df['n']
+        df['ref_psi'] = df['k'] / df['n']
 
         if ylim:
             plt.ylim((-0.1, 1.1))
@@ -262,14 +272,30 @@ class CountTable:
         if hue:
             kwargs['hue'] = hue
             kwargs['dodge'] = True
-        ax = plot(y='psi', data=df, **kwargs)
-        if swarm:
-            sns.swarmplot(y='psi', data=df, color=".25", alpha=0.5, **kwargs)
+            kwargs['hue_order'] = ['AA', 'Aa', 'aa', 'NN']
+        ax = plot(y='ref_psi', data=df, **kwargs)
+        
+        if plot_type == 'boxplot':
+            for i,artist in enumerate(ax.artists):
+                # Set the linecolor on the artist to the facecolor, and set the facecolor to None
+                col = self._lighten_color(artist.get_facecolor(), 1.2)
+                artist.set_edgecolor(col)    
 
+                # Each box has 6 associated Line2D objects (to make the whiskers, fliers, etc.)
+                # Loop over them here, and use the same colour as above
+                for j in range(i*6,i*6+6):
+                    line = ax.lines[j]
+                    line.set_color(col)
+                    line.set_mfc(col)
+                    line.set_mec(col)
+                    line.set_linewidth(0.5)
+        
+        if swarm:
+            sns.swarmplot(y='ref_psi', data=df, color=".25", alpha=0.5, **kwargs)
         return ax
 
     def _plot_psi_samples(self, df, samples=None, category_name='outliers',
-                          min_read=1, swarm=True, plot_type='boxplot',
+                          min_read=1, swarm=False, plot_type='boxplot',
                           ylim=True):
         if samples:
             df[category_name] = df.index.isin(samples)
@@ -279,13 +305,13 @@ class CountTable:
                               swarm=swarm, plot_type=plot_type, ylim=ylim)
 
     def plot_psi5(self, junction, samples=None, category_name='outliers',
-                  min_read=1, swarm=True, plot_type='boxplot'):
+                  min_read=1, swarm=False, plot_type='boxplot'):
         return self._plot_psi_samples(
             self.kn5(junction), samples=samples, category_name=category_name,
             min_read=min_read, swarm=swarm, plot_type=plot_type)
 
     def plot_psi3(self, junction, samples=None, category_name='outliers',
-                  min_read=1, swarm=True, plot_type='boxplot'):
+                  min_read=1, swarm=False, plot_type='boxplot'):
         return self._plot_psi_samples(
             self.kn3(junction), samples=samples, category_name=category_name,
             min_read=min_read, swarm=swarm, plot_type=plot_type)
@@ -294,14 +320,11 @@ class CountTable:
         dfs = list()
         for v in variants:
             _df = df.copy()
-            v_samples = vcf.get_samples(v)
+            v_samples = dict(zip(vcf.samples, v.source.gt_types))
             genotype = list()
             for sample in df.index:
                 if sample in vcf.samples:
-                    if sample in v_samples:
-                        genotype.append(gt_mapping[v_samples[sample]])
-                    else:
-                        genotype.append('NN')
+                    genotype.append(gt_mapping[v_samples[sample]])
                 else:
                     genotype.append('NN')
             _df['genotype'] = genotype
@@ -309,7 +332,7 @@ class CountTable:
             dfs.append(_df)
         return pd.concat(dfs, axis=0)
 
-    def _plot_psi_variants(self, df, vcf, variants, min_read=1, swarm=True,
+    def _plot_psi_variants(self, df, vcf, variants, min_read=1, swarm=False,
                            plot_type='boxplot', ylim=True):
         df = self._psi_variants(df, vcf, variants)
         return self._plot_psi(df, x='variant', hue='genotype',
@@ -317,7 +340,7 @@ class CountTable:
                               plot_type=plot_type, ylim=ylim)
 
     def plot_psi5_variants(self, junction, vcf, variants=None, min_read=1,
-                           swarm=True, plot_type='boxplot',
+                           swarm=False, plot_type='boxplot',
                            overhang=(100, 100), variant_filter=None):
         if not variants:
             donor_variants, acceptor_variants = get_variants_around_junction(
@@ -359,7 +382,7 @@ class CountTable:
         return self._filter_event(junctions, self.event3)
 
     # def _delta_logit_psi(self, psi, ref_psi, clip_threshold=0.01):
-    #     ref_psi = clip(ref_psi['psi'].values.reshape((-1, 1)),
+    #     ref_psi = clip(ref_psi['ref_psi'].values.reshape((-1, 1)),
     #                    threshold=clip_threshold),
     #     ref_psi = clip(psi.values, clip_threshold=clip_threshold)
     #     return logit(psi.values) - logit(ref_psi)
@@ -452,7 +475,7 @@ class CountTable:
         n = count_rows[self._event_samples].sum(axis=1)
         return pd.DataFrame({
             'junctions': count_rows.index,
-            'psi': k / n,
+            'ref_psi': k / n,
             'k': k,
             'n': n
         }).set_index('junctions')
@@ -465,7 +488,7 @@ class CountTable:
         psi = k / n
         return pd.DataFrame({
             'junctions': count_rows.index,
-            'psi': np.nanmean(psi, axis=1),
+            'ref_psi': np.nanmean(psi, axis=1),
             'std': np.nanstd(psi, axis=1)
         }).set_index('junctions')
 
@@ -474,7 +497,7 @@ class CountTable:
             return pd.DataFrame([
                 i for i in self._ref_psi_with_beta_binomial(
                     self.counts, event_counts, event)
-            ], columns=['junctions', 'psi', 'alpha', 'beta']) \
+            ], columns=['junctions', 'ref_psi', 'alpha', 'beta']) \
                 .set_index('junctions')
         elif method == 'k/n':
             return self._ref_psi_with_kn(

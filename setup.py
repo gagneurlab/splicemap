@@ -20,9 +20,7 @@ requirements = [
     'fastbetabino',
     'sklearn',
     'matplotlib',
-    'scikit-learn==0.19.2',
     'kipoiseq>=0.3.0',
-    'mmsplice_scripts'
 ]
 
 setup_requirements = ['pytest-runner', ]
@@ -46,10 +44,6 @@ setup(
     license="MIT license",
     long_description=readme + '\n\n' + history,
     long_description_content_type='text/markdown',
-    entry_points='''
-        [console_scripts]
-        mmsplice=mmsplice.main:cli
-    ''',
     include_package_data=True,
     keywords='count_table',
     name='count_table',

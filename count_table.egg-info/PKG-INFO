@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: count-table
+Version: 1.0.0
+Summary: Count table for sequencing data
+Home-page: https://github.com/gagneurlab/count_table
+Author: Hasan Celik
+Author-email: wagnern@in.tum.de
+License: MIT license
+Description: create a notebook file
+        explain all features of count_table
+        
+        
+Keywords: count_table
+Platform: UNKNOWN
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Description-Content-Type: text/markdown
