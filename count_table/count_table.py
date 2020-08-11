@@ -10,6 +10,7 @@ from count_table.dataclasses import Junction
 from count_table.utils import get_variants_around_junction
 import colorsys
 import matplotlib.colors as mc
+import pyranges as pr
 # from mmsplice.utils import logit
 # from mmsplice_scripts.data.utils import clip
 
@@ -73,6 +74,7 @@ class CountTable:
         self._event3_counts = None
         self._psi5 = None
         self._psi3 = None
+        self._inferred_annotation = None
 
     def _set_index(self):
         df = self.df.reset_index(drop=True)
@@ -555,3 +557,90 @@ class CountTable:
         #         .bar(subset=['expected_psi5', 'expected_psi3'],
         #              color='#ee1f5f', vmin=0, vmax=1)
         return df
+
+    # ===================== START INFER ANNOTATION HERE ========================================================
+    
+    
+    def _read_feature_from_gtf(self, gtf_file: str, feature_name: str) -> pr.PyRanges:
+        return pr.read_gtf(gtf_file) \
+                 .subset(lambda df: df['Feature'] == feature_name)
+
+
+    def _read_genes_from_gtf(self, gtf_file: str) -> pr.PyRanges:
+        return self._read_feature_from_gtf(gtf_file, 'gene')
+
+
+    def _remove_chr_from_chrom_annotation(self, pr_ranges: pr.PyRanges) -> pr.PyRanges:
+        """
+        Remove 'chr' from chrom name of pyranges
+        """
+        df = pr_ranges.df
+        df['Chromosome'] = df['Chromosome'].str.replace('chr', '')
+        return pr.PyRanges(df)
+
+    def _pr_genes_from_gtf(self, path_gtf):
+        pr_genes = self._read_genes_from_gtf(path_gtf)
+        pr_genes = self._remove_chr_from_chrom_annotation(pr_genes)
+        return pr_genes
+    
+    
+    def _gene_junction_overlap(self, path_gtf):
+        pr_genes = self._pr_genes_from_gtf(path_gtf)
+        pr_junctions = pr.PyRanges(self.junction_df.reset_index())
+        # Overlap genes and junctions
+        df_gene_junc = pr_genes.join(pr_junctions).df
+        # Filter inter-genenic junctions
+        df_gene_junc = df_gene_junc[
+            (df_gene_junc['Start'] < df_gene_junc['Start_b'])
+            & (df_gene_junc['End'] > df_gene_junc['End_b'])
+        ]
+        return df_gene_junc
+    
+    def _map_junctions_gene(self, path_gtf):
+        df_gene_junc = self._gene_junction_overlap(path_gtf)
+        # Aggregate junctions which can be mapped to multiple genes.
+        
+        if 'gene_type' in df_gene_junc.columns:
+            pass
+        elif 'gene_biotype' in df_gene_junc.columns:
+            df_gene_junc = df_gene_junc.rename(columns={'gene_biotype' : 'gene_type'})
+        else:
+            raise ValueError('gene_type can not be inferred from gtf file')
+
+        df_gene_junc = df_gene_junc[['junctions', 'gene_id', \
+                                                 'gene_name', 'gene_type']].groupby(by='junctions').agg(list)
+        return df_gene_junc
+    
+
+    def _create_weak_sites(self, path_gtf, path_junc_csv):
+        #     QUESTION: where does junc_csv come from? is this something that we annotated?
+        df_gene_junc = self._map_junctions_gene(path_gtf)
+        df_gtf = pd.read_csv(path_junc_csv).set_index('junctions')
+        # Create weak sites
+        df_gene_junc['weak'] = ~df_gene_junc.index.isin(df_gtf.index)
+        
+        return df_gtf, df_gene_junc
+    
+    
+    def infer_annotation(self, path_gtf, path_junc_csv):
+#         path_junc_csv just contains introns, annotated from gtf file
+        df_gtf, df_gene_junc = _create_weak_sites(self, path_gtf, path_junc_csv)
+        
+        for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
+            df_gtf[col] = df_gtf[col].str.split(';')
+
+        # If not weak, use genes from gtf
+        for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
+            df_gene_junc.at[~df_gene_junc['weak'], col] = df_gtf.loc[
+                df_gene_junc[~df_gene_junc['weak']].index, col]
+
+
+        for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
+            df_gene_junc[col] = df_gene_junc[col].str.join(';')
+            
+        self._inferred_annotation = df_gene_junc
+        
+        return self._inferred_annotation
+    
+
+        

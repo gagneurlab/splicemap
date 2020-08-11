@@ -6,7 +6,7 @@ from kipoiseq.extractors import MultiSampleVCF
 from count_table.dataclasses import Junction
 from count_table import CountTable, infer_junction_strand
 from kipoiseq.extractors import FastaStringExtractor
-from .conftest import fasta_file, vcf_file
+from .conftest import fasta_file, vcf_file, gtf_file, junc_file
 
 
 def test_infer_junction_strand():
@@ -582,3 +582,54 @@ def test_CountTable_plot_psi3_variants(count_table, mocker):
 #                   [0.,  0.,  0.]]
 #                  )
 #     )
+
+def test_CountTable_infer_annotation():
+    
+    #     df = pd.DataFrame({
+#         'Chromosome': ['17', '17'],
+#         'Start': [41267796, 41279042],
+#         'End': [41276033, 41279742],
+#         'Strand': ['.', '*'],
+#         's1': [1, 1],
+#         's2': [2, 1]
+#     })
+#     ct = CountTable(df)
+
+    df = pd.DataFrame({
+        'Chromosome': ['17', '17'],
+        'Start': [41197819, 41197831],
+        'End': [41199659, 41199670],
+        'Strand': ['-', '-'],
+        's1': [1, 1],
+        's2': [2, 1]
+    })
+    ct = CountTable(df)
+
+    df_gtf, df_gene_junc = ct._create_weak_sites(gtf_file, junc_file)
+    
+    for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
+            df_gtf[col] = df_gtf[col].str.split(';')
+
+    # If not weak, use genes from gtf
+    for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
+        df_gene_junc.at[~df_gene_junc['weak'], col] = df_gtf.loc[
+            df_gene_junc[~df_gene_junc['weak']].index, col]
+
+    for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
+        df_gene_junc[col] = df_gene_junc[col].str.join(';')
+
+    pd.testing.assert_frame_equal(
+        df_gene_junc,
+        pd.DataFrame({
+            'junctions': ['17:41197819-41199659:-', '17:41197831-41199670:-'],
+            'gene_id': ['ENSG00000012048.22_5', 'ENSG00000012048'],
+            'gene_name': ['BRCA1', 'BRCA1'],
+            'gene_type': ['protein_coding', 'protein_coding'],
+            'weak': [False, True],
+            'transcript_id':[
+                'ENST00000586385.5_1;ENST00000591534.5_1;ENST00000461221.5_1;ENST00000493795.5_1;'
+                'ENST00000357654.8_3;ENST00000591849.5_1;ENST00000468300.5_2;'
+                'ENST00000471181.7_3;ENST00000491747.6_3;ENST00000352993.7_2;ENST00000644379.1_1',
+                np.nan
+            ]}
+        ).set_index('junctions'))
