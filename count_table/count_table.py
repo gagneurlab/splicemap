@@ -7,7 +7,8 @@ from sklearn.mixture import GaussianMixture
 import matplotlib.pyplot as plt
 from kipoiseq.extractors import FastaStringExtractor
 from count_table.dataclasses import Junction
-from count_table.utils import get_variants_around_junction
+from count_table.utils import get_variants_around_junction, \
+    read_genes_from_gtf, remove_chr_from_chrom_annotation
 import colorsys
 import matplotlib.colors as mc
 import pyranges as pr
@@ -74,7 +75,7 @@ class CountTable:
         self._event3_counts = None
         self._psi5 = None
         self._psi3 = None
-        self._inferred_annotation = None
+        self._annotation = None
 
     def _set_index(self):
         df = self.df.reset_index(drop=True)
@@ -97,6 +98,14 @@ class CountTable:
     @property
     def samples(self):
         return self.df.columns[4:].tolist()
+
+    @property
+    def annotation(self):
+        if self._annotation is not None:
+            return self._annotation
+        else:
+            raise AttributeError('CountTable does not has annotation '
+                                 'unless `infer_annotation` is called.')
 
     def update_samples(self, mapping):
         self.df = self.df.rename(columns=mapping)
@@ -241,7 +250,7 @@ class CountTable:
         return self._plot_kn(self.kn3(junction), log=log, highlight=highlight,
                              highlight_name=highlight_name)
 
-    def _lighten_color(self, color, amount=0.5):  
+    def _lighten_color(self, color, amount=0.5):
         try:
             c = mc.cnames[color]
         except:
@@ -276,24 +285,25 @@ class CountTable:
             kwargs['dodge'] = True
             kwargs['hue_order'] = ['AA', 'Aa', 'aa', 'NN']
         ax = plot(y='ref_psi', data=df, **kwargs)
-        
+
         if plot_type == 'boxplot':
-            for i,artist in enumerate(ax.artists):
+            for i, artist in enumerate(ax.artists):
                 # Set the linecolor on the artist to the facecolor, and set the facecolor to None
                 col = self._lighten_color(artist.get_facecolor(), 1.2)
-                artist.set_edgecolor(col)    
+                artist.set_edgecolor(col)
 
                 # Each box has 6 associated Line2D objects (to make the whiskers, fliers, etc.)
                 # Loop over them here, and use the same colour as above
-                for j in range(i*6,i*6+6):
+                for j in range(i*6, i*6+6):
                     line = ax.lines[j]
                     line.set_color(col)
                     line.set_mfc(col)
                     line.set_mec(col)
                     line.set_linewidth(0.5)
-        
+
         if swarm:
-            sns.swarmplot(y='ref_psi', data=df, color=".25", alpha=0.5, **kwargs)
+            sns.swarmplot(y='ref_psi', data=df,
+                          color=".25", alpha=0.5, **kwargs)
         return ax
 
     def _plot_psi_samples(self, df, samples=None, category_name='outliers',
@@ -368,7 +378,7 @@ class CountTable:
         return self._plot_psi_variants(
             self.kn3(junction), vcf, variants=variants, min_read=min_read,
             swarm=swarm, plot_type=plot_type)
-        
+
     def filter(self, junctions):
         return CountTable(self.df.loc[junctions])
 
@@ -382,20 +392,6 @@ class CountTable:
 
     def filter_event3(self, junctions):
         return self._filter_event(junctions, self.event3)
-
-    # def _delta_logit_psi(self, psi, ref_psi, clip_threshold=0.01):
-    #     ref_psi = clip(ref_psi['ref_psi'].values.reshape((-1, 1)),
-    #                    threshold=clip_threshold),
-    #     ref_psi = clip(psi.values, clip_threshold=clip_threshold)
-    #     return logit(psi.values) - logit(ref_psi)
-
-    # def delta_logit_psi5(self, method='k/n'):
-    #     return self._delta_logit_psi(
-    #         self.psi5, self.ref_psi5(method=method))
-
-    # def delta_logit_psi3(self, method='k/n'):
-    #     return self._delta_logit_psi(
-    #         self.psi3, self.ref_psi3(method=method))
 
     def quantile_filter(self, quantile=95, min_read=1):
         '''
@@ -494,29 +490,36 @@ class CountTable:
             'std': np.nanstd(psi, axis=1)
         }).set_index('junctions')
 
-    def _ref_psi(self, event_counts, event, method):
+    def _ref_psi(self, event_counts, event, splice_site, method, annotation=True):
         if method == 'beta_binomial':
-            return pd.DataFrame([
+            df = pd.DataFrame([
                 i for i in self._ref_psi_with_beta_binomial(
                     self.counts, event_counts, event)
             ], columns=['junctions', 'ref_psi', 'alpha', 'beta']) \
                 .set_index('junctions')
         elif method == 'k/n':
-            return self._ref_psi_with_kn(
+            df = self._ref_psi_with_kn(
                 self.counts, event_counts, event)
-        elif method == 'median':
-            return
         elif method == 'mean':
-            return self._ref_psi_with_mean_std(
+            df = self._ref_psi_with_mean_std(
                 self.counts, event_counts, event)
         else:
             raise ValueError('method name %s is valid' % method)
 
-    def ref_psi5(self, method='k/n'):
-        return self._ref_psi(self.event5_counts, self.event5, method=method)
+        df = self.junction_df.join(splice_site).join(event).join(df)
 
-    def ref_psi3(self, method='k/n'):
-        return self._ref_psi(self.event3_counts, self.event3, method=method)
+        if annotation:
+            df = df.join(self.annotation)
+            df = df[~df['gene_name'].isna()]
+        return df
+
+    def ref_psi5(self, method='k/n', annotation=True):
+        return self._ref_psi(self.event5_counts, self.event5, self.splice_site5,
+                             method=method, annotation=annotation)
+
+    def ref_psi3(self, method='k/n', annotation=True):
+        return self._ref_psi(self.event3_counts, self.event3, self.splice_site3,
+                             method=method, annotation=annotation)
 
     def _psi(self, event_counts, event):
         count_rows = self._join_count_with_event_counts(
@@ -558,34 +561,16 @@ class CountTable:
         #              color='#ee1f5f', vmin=0, vmax=1)
         return df
 
-    # ===================== START INFER ANNOTATION HERE ========================================================
-    
-    
-    def _read_feature_from_gtf(self, gtf_file: str, feature_name: str) -> pr.PyRanges:
-        return pr.read_gtf(gtf_file) \
-                 .subset(lambda df: df['Feature'] == feature_name)
+    def _pr_genes_from_gtf(self, gtf_file):
+        pr_genes = read_genes_from_gtf(gtf_file)
 
+        if not any('chr' in i for i in self.df['Chromosome'].unique()):
+            pr_genes = remove_chr_from_chrom_annotation(pr_genes)
 
-    def _read_genes_from_gtf(self, gtf_file: str) -> pr.PyRanges:
-        return self._read_feature_from_gtf(gtf_file, 'gene')
-
-
-    def _remove_chr_from_chrom_annotation(self, pr_ranges: pr.PyRanges) -> pr.PyRanges:
-        """
-        Remove 'chr' from chrom name of pyranges
-        """
-        df = pr_ranges.df
-        df['Chromosome'] = df['Chromosome'].str.replace('chr', '')
-        return pr.PyRanges(df)
-
-    def _pr_genes_from_gtf(self, path_gtf):
-        pr_genes = self._read_genes_from_gtf(path_gtf)
-        pr_genes = self._remove_chr_from_chrom_annotation(pr_genes)
         return pr_genes
-    
-    
-    def _gene_junction_overlap(self, path_gtf):
-        pr_genes = self._pr_genes_from_gtf(path_gtf)
+
+    def _gene_junction_overlap(self, gtf_file):
+        pr_genes = self._pr_genes_from_gtf(gtf_file)
         pr_junctions = pr.PyRanges(self.junction_df.reset_index())
         # Overlap genes and junctions
         df_gene_junc = pr_genes.join(pr_junctions).df
@@ -595,52 +580,60 @@ class CountTable:
             & (df_gene_junc['End'] > df_gene_junc['End_b'])
         ]
         return df_gene_junc
-    
-    def _map_junctions_gene(self, path_gtf):
-        df_gene_junc = self._gene_junction_overlap(path_gtf)
+
+    def _map_junctions_gene(self, gtf_file):
+        df_gene_junc = self._gene_junction_overlap(gtf_file)
         # Aggregate junctions which can be mapped to multiple genes.
-        
+
         if 'gene_type' in df_gene_junc.columns:
             pass
         elif 'gene_biotype' in df_gene_junc.columns:
-            df_gene_junc = df_gene_junc.rename(columns={'gene_biotype' : 'gene_type'})
+            df_gene_junc = df_gene_junc.rename(
+                columns={'gene_biotype': 'gene_type'})
         else:
             raise ValueError('gene_type can not be inferred from gtf file')
 
-        df_gene_junc = df_gene_junc[['junctions', 'gene_id', \
-                                                 'gene_name', 'gene_type']].groupby(by='junctions').agg(list)
-        return df_gene_junc
-    
+        df_gene_junc = df_gene_junc[[
+            'junctions', 'gene_id', 'gene_name', 'gene_type'
+        ]].groupby(by='junctions').agg(list)
 
-    def _create_weak_sites(self, path_gtf, path_junc_csv):
-        #     QUESTION: where does junc_csv come from? is this something that we annotated?
-        df_gene_junc = self._map_junctions_gene(path_gtf)
-        df_gtf = pd.read_csv(path_junc_csv).set_index('junctions')
-        # Create weak sites
-        df_gene_junc['weak'] = ~df_gene_junc.index.isin(df_gtf.index)
-        
-        return df_gtf, df_gene_junc
-    
-    
-    def infer_annotation(self, path_gtf, path_junc_csv):
-#         path_junc_csv just contains introns, annotated from gtf file
-        df_gtf, df_gene_junc = _create_weak_sites(self, path_gtf, path_junc_csv)
-        
+        return df_gene_junc
+
+    def _read_junction_file(self, gtf_junction_file):
+        df_gtf = pd.read_csv(gtf_junction_file).set_index('junctions')
+
         for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
             df_gtf[col] = df_gtf[col].str.split(';')
+
+        return df_gtf
+
+    def infer_annotation(self, gtf_file, gtf_junction_file):
+        df_gene_junc = self._map_junctions_gene(gtf_file)
+        df_gtf = self._read_junction_file(gtf_junction_file)
+
+        df_gene_junc['weak'] = ~df_gene_junc.index.isin(df_gtf.index)
 
         # If not weak, use genes from gtf
         for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
             df_gene_junc.at[~df_gene_junc['weak'], col] = df_gtf.loc[
                 df_gene_junc[~df_gene_junc['weak']].index, col]
 
-
         for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
             df_gene_junc[col] = df_gene_junc[col].str.join(';')
-            
-        self._inferred_annotation = df_gene_junc
-        
-        return self._inferred_annotation
-    
 
-        
+        self._annotation = df_gene_junc
+        return self._annotation
+
+    # def _delta_logit_psi(self, psi, ref_psi, clip_threshold=0.01):
+    #     ref_psi = clip(ref_psi['ref_psi'].values.reshape((-1, 1)),
+    #                    threshold=clip_threshold),
+    #     ref_psi = clip(psi.values, clip_threshold=clip_threshold)
+    #     return logit(psi.values) - logit(ref_psi)
+
+    # def delta_logit_psi5(self, method='k/n'):
+    #     return self._delta_logit_psi(
+    #         self.psi5, self.ref_psi5(method=method))
+
+    # def delta_logit_psi3(self, method='k/n'):
+    #     return self._delta_logit_psi(
+    #         self.psi3, self.ref_psi3(method=method))
