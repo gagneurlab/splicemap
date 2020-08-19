@@ -352,6 +352,15 @@ def test_CountTable_psi3(count_table):
 def test_CountTable_to_from_csv(count_table, tmp_path):
     path = tmp_path / 'count_table.csv'
     count_table.to_csv(path)
+    count_table.df = count_table.df.astype({
+        'Chromosome': 'category',
+        'Start': 'int32',
+        'End': 'int32',
+        'Strand': 'category',
+        's1': 'int32',
+        's2': 'int32',
+        's3': 'int32'
+    })
     ct = CountTable.read_csv(path)
     pd.testing.assert_frame_equal(ct.df, count_table.df)
 

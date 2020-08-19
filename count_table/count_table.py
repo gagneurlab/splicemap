@@ -1,17 +1,17 @@
+import colorsys
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import seaborn as sns
+import pyranges as pr
+import matplotlib.pyplot as plt
+import matplotlib.colors as mc
 from fastbetabino import fit_alpha_beta
 from sklearn.mixture import GaussianMixture
-import matplotlib.pyplot as plt
 from kipoiseq.extractors import FastaStringExtractor
 from count_table.dataclasses import Junction
 from count_table.utils import get_variants_around_junction, \
     read_genes_from_gtf, remove_chr_from_chrom_annotation
-import colorsys
-import matplotlib.colors as mc
-import pyranges as pr
 # from mmsplice.utils import logit
 # from mmsplice_scripts.data.utils import clip
 
@@ -58,8 +58,8 @@ def infer_junction_strand(junction, fasta, default='.'):
 
 
 def df_to_interval_str(df):
-    return df['Chromosome'].map(str) + ':' + df['Start'].map(str) + '-' \
-        + df['End'].map(str) + ':' + df['Strand'].map(str)
+    return df['Chromosome'].astype(str) + ':' + df['Start'].astype(str) + '-' \
+        + df['End'].astype(str) + ':' + df['Strand'].astype(str)
 
 
 class CountTable:
@@ -84,7 +84,20 @@ class CountTable:
 
     @classmethod
     def read_csv(cls, csv_path):
-        df = pd.read_csv(csv_path, dtype={'Chromosome': str})
+        dtype = {
+            'Chromosome': 'category',
+            'Start': 'int32',
+            'End': 'int32',
+            'Strand': 'category'
+        }
+        with open(csv_path) as f:
+            columns = next(f).strip().split(',')
+            samples = columns[4:]
+
+        for i in samples:
+            dtype[i] = 'int32'
+
+        df = pd.read_csv(csv_path, dtype=dtype)
         return cls(df)
 
     @property
@@ -136,12 +149,14 @@ class CountTable:
     def splice_site5(self):
         if self._splice_site5 is None:
             df_pos = self.df[self.df['Strand'] == '+']
-            splice_site_pos = df_pos['Chromosome'].map(str) + ':' \
-                + df_pos['Start'].map(str) + ':' + df_pos['Strand'].map(str)
+            splice_site_pos = df_pos['Chromosome'].astype(str) + ':' \
+                + df_pos['Start'].astype(str) + ':' + \
+                df_pos['Strand'].astype(str)
 
             df_neg = self.df[self.df['Strand'] == '-']
-            splice_site_neg = df_neg['Chromosome'].map(str) + ':' \
-                + df_neg['End'].map(str) + ':' + df_neg['Strand'].map(str)
+            splice_site_neg = df_neg['Chromosome'].astype(str) + ':' \
+                + df_neg['End'].astype(str) + ':' + \
+                df_neg['Strand'].astype(str)
 
             splice_site = pd.concat([splice_site_pos, splice_site_neg])
             self._splice_site5 = pd.DataFrame({
@@ -154,12 +169,14 @@ class CountTable:
     def splice_site3(self):
         if self._splice_site3 is None:
             df_pos = self.df[self.df['Strand'] == '+']
-            splice_site_pos = df_pos['Chromosome'].map(str) + ':' \
-                + df_pos['End'].map(str) + ':' + df_pos['Strand'].map(str)
+            splice_site_pos = df_pos['Chromosome'].astype(str) + ':' \
+                + df_pos['End'].astype(str) + ':' + \
+                df_pos['Strand'].astype(str)
 
             df_neg = self.df[self.df['Strand'] == '-']
-            splice_site_neg = df_neg['Chromosome'].map(str) + ':' \
-                + df_neg['Start'].map(str) + ':' + df_neg['Strand'].map(str)
+            splice_site_neg = df_neg['Chromosome'].astype(str) + ':' \
+                + df_neg['Start'].astype(str) + ':' + \
+                df_neg['Strand'].astype(str)
 
             splice_site = pd.concat([splice_site_pos, splice_site_neg])
             self._splice_site3 = pd.DataFrame({
@@ -403,6 +420,19 @@ class CountTable:
 
     def filter_event3(self, junctions):
         return self._filter_event(junctions, self.event3)
+
+    def _plot_median_read_hist_event(self, event_counts):
+        x = np.median(event_counts, axis=1)
+        x = x[x > 0]
+        plt.xlabel('log(N) in median sample')
+        plt.ylabel('Number of junctions')
+        plt.hist(np.log(x))
+
+    def plot_median_read_hist_event5(self):
+        self._plot_median_read_hist_event(self.event5_counts)
+
+    def plot_median_read_hist_event3(self):
+        self._plot_median_read_hist_event(self.event3_counts)
 
     def quantile_filter(self, quantile=95, min_read=1):
         '''
