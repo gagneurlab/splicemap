@@ -32,7 +32,7 @@ source venv/bin/activate
 
 External dependencies:
 ```bash
-pip install cyvcf2 cython pytest pytest-runner
+pip install cython cyvcf2 
 ```
 
 Install all packages from setup.py:

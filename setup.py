@@ -21,6 +21,7 @@ requirements = [
     'matplotlib',
     'kipoiseq>=0.3.0',
     'fastbetabino3',
+    'pyranges>=0.0.71'
 ]
 
 
@@ -29,16 +30,17 @@ setup_requirements = ['pytest-runner', ]
 test_requirements = ['pytest', 'pytest-benchmark']
 
 setup(
-    author="Hasan Celik",
+    author="M. Hasan Celik & Nils Wagner",
     author_email="wagnern@in.tum.de",
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9'
     ],
     description="Count table for sequencing data",
     install_requires=requirements,
@@ -50,10 +52,10 @@ setup(
     name='count_table',
     packages=find_packages(include=['count_table']),
     setup_requires=setup_requirements,
-#     dependency_links=['http://github.com/lfiaschi/fastbetabino/tarball/master#egg=fastbetabino'],
+    #     dependency_links=['http://github.com/lfiaschi/fastbetabino/tarball/master#egg=fastbetabino'],
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/gagneurlab/count_table',
-    version='1.0.0',
+    version='0.0.1',
     zip_safe=False
 )

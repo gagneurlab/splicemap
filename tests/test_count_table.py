@@ -6,7 +6,7 @@ from kipoiseq.extractors import MultiSampleVCF
 from count_table.dataclasses import Junction
 from count_table import CountTable, infer_junction_strand
 from kipoiseq.extractors import FastaStringExtractor
-from .conftest import fasta_file, vcf_file
+from .conftest import fasta_file, vcf_file, gtf_file, junc_file
 
 
 def test_infer_junction_strand():
@@ -37,6 +37,19 @@ def count_table():
         's1': [1, 1, 1, 1, 1],
         's2': [2, 1, 1, 1, 1],
         's3': [10, 5, 1, 2, 4]
+    })
+    return CountTable(df)
+
+
+@pytest.fixture
+def count_table_chr17():
+    df = pd.DataFrame({
+        'Chromosome': ['17', '17'],
+        'Start': [41197819, 41197831],
+        'End': [41199659, 41199670],
+        'Strand': ['-', '-'],
+        's1': [1, 1],
+        's2': [2, 1]
     })
     return CountTable(df)
 
@@ -275,19 +288,19 @@ def test_event3_median_filter(count_table):
 
 
 def test_CountTable_ref_psi5(count_table):
-    df = count_table.ref_psi5(method='beta_binomial')
+    df = count_table.ref_psi5(method='beta_binomial', annotation=False)
     np.testing.assert_almost_equal(
         df['ref_psi'].tolist(), [1, 1, 1, 0.4, 0.6],
         decimal=2
     )
 
-    df = count_table.ref_psi5(method='k/n')
+    df = count_table.ref_psi5(method='k/n', annotation=False)
     np.testing.assert_almost_equal(
         df['ref_psi'].tolist(), [1, 1, 1, 0.4, 0.6],
         decimal=2
     )
 
-    df = count_table.ref_psi5(method='mean')
+    df = count_table.ref_psi5(method='mean', annotation=False)
     np.testing.assert_almost_equal(
         df['ref_psi'].tolist(), [1, 1, 1, 0.44, 0.55],
         decimal=2
@@ -295,19 +308,19 @@ def test_CountTable_ref_psi5(count_table):
 
 
 def test_CountTable_ref_psi3(count_table):
-    df = count_table.ref_psi3(method='beta_binomial')
+    df = count_table.ref_psi3(method='beta_binomial', annotation=False)
     np.testing.assert_almost_equal(
         df['ref_psi'].tolist(), [.65, .35, 1, 1, 1],
         decimal=2
     )
 
-    df = count_table.ref_psi3(method='k/n')
+    df = count_table.ref_psi3(method='k/n', annotation=False)
     np.testing.assert_almost_equal(
         df['ref_psi'].tolist(), [.65, .35, 1, 1, 1],
         decimal=2
     )
 
-    df = count_table.ref_psi3(method='mean')
+    df = count_table.ref_psi3(method='mean', annotation=False)
     np.testing.assert_almost_equal(
         df['ref_psi'].tolist(), [0.61, 0.38, 1, 1, 1],
         decimal=2
@@ -515,7 +528,7 @@ def test_CountTable_plot_psi3(count_table, mocker):
     plot = mocker.patch('seaborn.boxplot')
     count_table.plot_psi3('chr1:5-30:+', samples=['s3'])
 #     import matplotlib.pyplot as plt
-#     plt.show()    
+#     plt.show()
     args, kwargs = plot.call_args_list[0]
     np.testing.assert_almost_equal(
         kwargs['data']['ref_psi'], [0.5, 0.666666, 0.666666],
@@ -544,6 +557,7 @@ def test_CountTable__psi_variants(count_table):
         }).set_index('sample')
     )
 
+
 def test_CountTable_plot_psi5_variants(count_table, mocker):
     vcf = MultiSampleVCF(vcf_file)
     df = count_table.df.rename(columns={'s1': 'NA00002', 's2': 'NA00003'})
@@ -558,6 +572,47 @@ def test_CountTable_plot_psi3_variants(count_table, mocker):
     count_table.plot_psi3_variants('chr1:5-30:+', vcf)
 
 
+def test_CountTable_infer_annotation(count_table_chr17):
+    df = count_table_chr17.infer_annotation(gtf_file, junc_file)
+
+    pd.testing.assert_frame_equal(
+        df,
+        pd.DataFrame({
+            'junctions': ['17:41197819-41199659:-', '17:41197831-41199670:-'],
+            'gene_id': ['ENSG00000012048.22_5', 'ENSG00000012048'],
+            'gene_name': ['BRCA1', 'BRCA1'],
+            'gene_type': ['protein_coding', 'protein_coding'],
+            'weak': [False, True],
+            'transcript_id': [
+                'ENST00000586385.5_1;ENST00000591534.5_1;ENST00000461221.5_1;'
+                'ENST00000493795.5_1;ENST00000357654.8_3;ENST00000591849.5_1;'
+                'ENST00000468300.5_2;ENST00000471181.7_3;ENST00000491747.6_3;'
+                'ENST00000352993.7_2;ENST00000644379.1_1',
+                np.nan
+            ]
+        }).set_index('junctions'))
+
+
+def test_CountTable_ref_psi5_annnotation(count_table_chr17):
+    count_table_chr17.infer_annotation(gtf_file, junc_file)
+    df = count_table_chr17.ref_psi5()
+
+    assert df.columns.tolist() == [
+        'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
+        'ref_psi', 'k', 'n', 'gene_id', 'gene_name', 'gene_type', 'weak',
+        'transcript_id']
+
+
+def test_CountTable_ref_psi3_annnotation(count_table_chr17):
+    count_table_chr17.infer_annotation(gtf_file, junc_file)
+    df = count_table_chr17.ref_psi5()
+
+    assert df.columns.tolist() == [
+        'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
+        'ref_psi', 'k', 'n', 'gene_id', 'gene_name', 'gene_type', 'weak',
+        'transcript_id']
+
+
 # def test_CountTable_delta_logit_psi5(count_table):
 #     delta_logit_psi = count_table.delta_logit_psi5()
 #     np.testing.assert_almost_equal(
@@ -569,7 +624,6 @@ def test_CountTable_plot_psi3_variants(count_table, mocker):
 #                   [-0.40546511, -0.40546511,  0.28768207]]
 #                  )
 #     )
-
 
 # def test_CountTable_delta_logit_psi3(count_table):
 #     delta_logit_psi = count_table.delta_logit_psi3()
