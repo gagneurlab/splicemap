@@ -239,10 +239,7 @@ class CountTable:
                  highlight_name='outlier'):
         if highlight:
             df[highlight_name] = df.index.isin(highlight)
-            
-            import pdb
-            pdb.set_trace()
-            
+
             ax = sns.scatterplot(
                 x='n', y='k', data=df,
                 hue=highlight_name, style=highlight_name,
