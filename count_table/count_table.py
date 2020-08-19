@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import seaborn as sns
 from fastbetabino import fit_alpha_beta
 from sklearn.mixture import GaussianMixture
@@ -67,6 +67,11 @@ class CountTable:
     def __init__(self, df):
         self.df = df
         self._set_index()
+
+    def _set_index(self):
+        df = self.df.reset_index(drop=True)
+        df['junctions'] = df_to_interval_str(df)
+        self.df = df.set_index('junctions')
         self._splice_site5 = None
         self._splice_site3 = None
         self._event5 = None
@@ -76,11 +81,6 @@ class CountTable:
         self._psi5 = None
         self._psi3 = None
         self._annotation = None
-
-    def _set_index(self):
-        df = self.df.reset_index(drop=True)
-        df['junctions'] = df_to_interval_str(df)
-        self.df = df.set_index('junctions')
 
     @classmethod
     def read_csv(cls, csv_path):
@@ -114,11 +114,21 @@ class CountTable:
     def counts(self):
         return self.df[self.samples]
 
-    def infer_strand(self, fasta_file, default='+'):
+    def infer_strand(self, fasta_file, default='+', progress=False):
         fasta = FastaStringExtractor(fasta_file)
+        chroms = FastaStringExtractor(fasta_file).fasta.keys()
+        chroms = set(chroms).intersection(self.df['Chromosome'].unique())
+
+        if len(chroms) == 0:
+            raise ValueError('Chromosome annotation in fasta file does match'
+                             ' with count table chromosome annotation.')
+        else:
+            self.df = self.df[self.df['Chromosome'].isin(chroms)]
+
+        junctions = tqdm(self.junctions) if progress else self.junctions
         self.df['Strand'] = [
             infer_junction_strand(i, fasta, default=default)
-            for i in self.junctions
+            for i in junctions
         ]
         self._set_index()
 
@@ -229,6 +239,10 @@ class CountTable:
                  highlight_name='outlier'):
         if highlight:
             df[highlight_name] = df.index.isin(highlight)
+            
+            import pdb
+            pdb.set_trace()
+            
             ax = sns.scatterplot(
                 x='n', y='k', data=df,
                 hue=highlight_name, style=highlight_name,
