@@ -63,9 +63,13 @@ def df_to_interval_str(df):
 
 
 class CountTable:
+    required_columns = ('Chromosome', 'Start', 'End', 'Strand')
+    # TODO: implement optional columns
 
     def __init__(self, df):
         self.df = df
+        assert self.validate(df), \
+            f'First 4 columns need to be {CountTable.required_columns}'
         self._set_index()
 
     def _set_index(self):
@@ -82,6 +86,14 @@ class CountTable:
         self._psi3 = None
         self._annotation = None
 
+    @staticmethod
+    def validate(df):
+        return CountTable._validate_columns(df.columns)
+
+    @staticmethod
+    def _validate_columns(columns):
+        return tuple(columns[:4]) == ('Chromosome', 'Start', 'End', 'Strand')
+
     @classmethod
     def read_csv(cls, csv_path):
         dtype = {
@@ -92,6 +104,9 @@ class CountTable:
         }
         with open(csv_path) as f:
             columns = next(f).strip().split(',')
+            assert CountTable._validate_columns(columns), \
+                f'First 4 columns need to be {CountTable.required_columns}'
+
             samples = columns[4:]
 
         for i in samples:

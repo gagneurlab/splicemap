@@ -41,6 +41,22 @@ def count_table():
     return CountTable(df)
 
 
+def count_table_validate():
+    df = pd.DataFrame({
+        'index': [1, 2, 3, 4, 5],
+        'Chromosome': ['chr1', 'chr1', 'chr2', 'chr2', 'chr2'],
+        'Start': [5, 22, 10, 10, 20],
+        'End': [30, 30, 30, 50, 50],
+        'Strand': ['+', '+', '+', '-', '-'],
+        's1': [1, 1, 1, 1, 1],
+        's2': [2, 1, 1, 1, 1],
+        's3': [10, 5, 1, 2, 4]
+    })
+
+    with pytest.raises(AssertionError):
+        CountTable(df)
+
+
 @pytest.fixture
 def count_table_chr17():
     df = pd.DataFrame({
