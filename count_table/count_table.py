@@ -511,27 +511,35 @@ class CountTable:
             counts, event_counts, event).iterrows()
         if progress:
             count_rows = tqdm(count_rows, total=counts.shape[0])
-
+                
         for junc, row in count_rows:
             if ';' in row['events']:
                 k = row[self.samples].tolist()
                 n = row[self._event_samples].tolist()
+                median_n = np.median(n)
                 alpha, beta = fit_alpha_beta(n, k, niter=niter)
             else:
+                k = row[self.samples].tolist()
+                n = row[self._event_samples].tolist()
+                sum_k = np.sum(k)
+                sum_n = np.sum(n)
+                median_n = np.median(n)
                 alpha, beta = 100, 0.01
             psi = alpha / (alpha + beta)
-            yield junc, psi, alpha, beta
+            yield junc, psi, alpha, beta, sum_k, sum_n, median_n
 
     def _ref_psi_with_kn(self, counts, event_counts, event):
         count_rows = self._join_count_with_event_counts(
             counts, event_counts, event)
         k = count_rows[self.samples].sum(axis=1)
         n = count_rows[self._event_samples].sum(axis=1)
+        median_n = count_rows[self._event_samples].median(axis=1)
         return pd.DataFrame({
             'junctions': count_rows.index,
             'ref_psi': k / n,
             'k': k,
-            'n': n
+            'n': n,
+            'median_n': median_n
         }).set_index('junctions')
 
     def _ref_psi_with_mean_std(self, counts, event_counts, event):
@@ -551,7 +559,7 @@ class CountTable:
             df = pd.DataFrame([
                 i for i in self._ref_psi_with_beta_binomial(
                     self.counts, event_counts, event)
-            ], columns=['junctions', 'ref_psi', 'alpha', 'beta']) \
+            ], columns=['junctions', 'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n']) \
                 .set_index('junctions')
         elif method == 'k/n':
             df = self._ref_psi_with_kn(
