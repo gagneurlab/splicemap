@@ -513,17 +513,14 @@ class CountTable:
             count_rows = tqdm(count_rows, total=counts.shape[0])
                 
         for junc, row in count_rows:
+            k = row[self.samples].tolist()
+            n = row[self._event_samples].tolist()
+            sum_k = np.sum(k)
+            sum_n = np.sum(n)
+            median_n = np.median(n)
             if ';' in row['events']:
-                k = row[self.samples].tolist()
-                n = row[self._event_samples].tolist()
-                median_n = np.median(n)
                 alpha, beta = fit_alpha_beta(n, k, niter=niter)
             else:
-                k = row[self.samples].tolist()
-                n = row[self._event_samples].tolist()
-                sum_k = np.sum(k)
-                sum_n = np.sum(n)
-                median_n = np.median(n)
                 alpha, beta = 100, 0.01
             psi = alpha / (alpha + beta)
             yield junc, psi, alpha, beta, sum_k, sum_n, median_n
