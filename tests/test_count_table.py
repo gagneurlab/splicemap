@@ -1,3 +1,4 @@
+import pdb
 import pytest
 import numpy as np
 import pandas as pd
@@ -636,6 +637,33 @@ def test_CountTable_ref_psi3_annnotation(count_table_chr17):
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
         'ref_psi', 'k', 'n', 'gene_id', 'gene_name', 'gene_type', 'weak',
         'transcript_id']
+
+
+def test_CountTable_join(count_table):
+    ct_other = CountTable(pd.DataFrame({
+        'Chromosome': ['chr1', 'chr3', 'chr2'],
+        'Start': [5, 100, 10],
+        'End': [30, 120, 30],
+        'Strand': ['+', '+', '+'],
+        's4': [1, 1, 1],
+        's5': [3, 1, 1],
+        's1': [1, 2, 3]
+    }))
+
+    ct = count_table.join(ct_other, suffix='_second')
+    ct_expected = CountTable(pd.DataFrame({
+        'Chromosome': ['chr1', 'chr1', 'chr2', 'chr2', 'chr2', 'chr3'],
+        'Start': [22, 5, 10, 10, 20, 100],
+        'End': [30, 30, 30, 50, 50, 120],
+        'Strand': ['+', '+', '+', '-', '-', '+'],
+        's1': [1, 1, 1, 1, 1, 0],
+        's2': [1, 2, 1, 1, 1, 0],
+        's3': [5, 10, 1, 2, 4, 0],
+        's4': [0, 1, 1, 0, 0, 1],
+        's5': [0, 3, 1, 0, 0, 1],
+        's1_second': [0, 1, 3, 0, 0, 2],
+    }))
+    pd.testing.assert_frame_equal(ct.df, ct_expected.df)
 
 
 # def test_CountTable_delta_logit_psi5(count_table):

@@ -70,6 +70,7 @@ class CountTable:
         self.df = df
         assert self.validate(df), \
             f'First 4 columns need to be {CountTable.required_columns}'
+        self.df = self.df.astype(self._dtype(self.samples))
         self._set_index()
 
     def _set_index(self):
@@ -94,25 +95,26 @@ class CountTable:
     def _validate_columns(columns):
         return tuple(columns[:4]) == ('Chromosome', 'Start', 'End', 'Strand')
 
-    @classmethod
-    def read_csv(cls, csv_path):
+    def _dtype(self, samples):
         dtype = {
             'Chromosome': 'category',
             'Start': 'int32',
             'End': 'int32',
             'Strand': 'category'
         }
+        for i in samples:
+            dtype[i] = 'int32'
+        return dtype
+
+    @classmethod
+    def read_csv(cls, csv_path):
         with open(csv_path) as f:
             columns = next(f).strip().split(',')
             assert CountTable._validate_columns(columns), \
                 f'First 4 columns need to be {CountTable.required_columns}'
-
             samples = columns[4:]
 
-        for i in samples:
-            dtype[i] = 'int32'
-
-        df = pd.read_csv(csv_path, dtype=dtype)
+        df = pd.read_csv(csv_path, dtype=self._dtype(samples))
         return cls(df)
 
     @property
@@ -679,6 +681,16 @@ class CountTable:
 
         self._annotation = df_gene_junc
         return self._annotation
+
+    def join(self, ct, suffix='_other'):
+        df = self.df.join(ct.df, rsuffix=suffix, how='outer')
+
+        for i in self.required_columns:
+            other_col = f'{i}{suffix}'
+            df[i] = np.where(~df[i].isna(), df[i], df[other_col])
+            del df[other_col]
+
+        return CountTable(df.fillna(0))
 
     # def _delta_logit_psi(self, psi, ref_psi, clip_threshold=0.01):
     #     ref_psi = clip(ref_psi['ref_psi'].values.reshape((-1, 1)),
