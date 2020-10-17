@@ -28,6 +28,20 @@ def test_infer_junction_strand():
         junc, FastaStringExtractor(fasta_file)) == '-'
 
 
+dtypes = pd.Series({
+    'Chromosome': 'category',
+    'Start': 'int32',
+    'End': 'int32',
+    'Strand': 'category',
+    's1': 'int32',
+    's2': 'int32',
+    's3': 'int32',
+    'count': 'int32',
+    'k': 'int32',
+    'n': 'int32'
+})
+
+
 @pytest.fixture
 def count_table():
     df = pd.DataFrame({
@@ -97,22 +111,22 @@ def test_CountTable_junctions(count_table):
 
 
 def test_CountTable_junctions_df(count_table):
+    df = pd.DataFrame({
+        'junctions': [
+            'chr1:5-30:+',
+            'chr1:22-30:+',
+            'chr2:10-30:+',
+            'chr2:10-50:-',
+            'chr2:20-50:-'
+        ],
+        'Chromosome': ['chr1', 'chr1', 'chr2', 'chr2', 'chr2'],
+        'Start': [5, 22, 10, 10, 20],
+        'End': [30, 30, 30, 50, 50],
+        'Strand': ['+', '+', '+', '-', '-']
+    }).set_index('junctions')
+    df = df.astype(dtypes[dtypes.keys().isin(df.columns)])
     pd.testing.assert_frame_equal(
-        count_table.junction_df,
-        pd.DataFrame({
-            'junctions': [
-                'chr1:5-30:+',
-                'chr1:22-30:+',
-                'chr2:10-30:+',
-                'chr2:10-50:-',
-                'chr2:20-50:-'
-            ],
-            'Chromosome': ['chr1', 'chr1', 'chr2', 'chr2', 'chr2'],
-            'Start': [5, 22, 10, 10, 20],
-            'End': [30, 30, 30, 50, 50],
-            'Strand': ['+', '+', '+', '-', '-']
-        }).set_index('junctions')
-    )
+        count_table.junction_df, df)
 
 
 def test_CountTable_samples(count_table):
@@ -120,21 +134,22 @@ def test_CountTable_samples(count_table):
 
 
 def test_CountTable_counts(count_table):
+    df = pd.DataFrame({
+        'junctions': [
+            'chr1:5-30:+',
+            'chr1:22-30:+',
+            'chr2:10-30:+',
+            'chr2:10-50:-',
+            'chr2:20-50:-'
+        ],
+        's1': [1, 1, 1, 1, 1],
+        's2': [2, 1, 1, 1, 1],
+        's3': [10, 5, 1, 2, 4]
+    }).set_index('junctions')
+    df = df.astype(dtypes[dtypes.keys().isin(df.columns)])
+
     pd.testing.assert_frame_equal(
-        count_table.counts,
-        pd.DataFrame({
-            'junctions': [
-                'chr1:5-30:+',
-                'chr1:22-30:+',
-                'chr2:10-30:+',
-                'chr2:10-50:-',
-                'chr2:20-50:-'
-            ],
-            's1': [1, 1, 1, 1, 1],
-            's2': [2, 1, 1, 1, 1],
-            's3': [10, 5, 1, 2, 4]
-        }).set_index('junctions')
-    )
+        count_table.counts, df)
 
 
 def test_CountTable_splice_site5(count_table):
@@ -226,37 +241,39 @@ def test_CountTable_event3(count_table):
 
 
 def test_CountTable_event5_count(count_table):
+    df = pd.DataFrame({
+        'events': [
+            'chr1:22-30:+',
+            'chr1:5-30:+',
+            'chr2:10-30:+',
+            'chr2:10-50:-;chr2:20-50:-'
+        ],
+        's1': [1, 1, 1, 2],
+        's2': [1, 2, 1, 2],
+        's3': [5, 10, 1, 6]
+    }).set_index('events')
+    df = df.astype(dtypes[dtypes.keys().isin(df.columns)])
+
     pd.testing.assert_frame_equal(
-        count_table.event5_counts,
-        pd.DataFrame({
-            'events': [
-                'chr1:22-30:+',
-                'chr1:5-30:+',
-                'chr2:10-30:+',
-                'chr2:10-50:-;chr2:20-50:-'
-            ],
-            's1': [1, 1, 1, 2],
-            's2': [1, 2, 1, 2],
-            's3': [5, 10, 1, 6]
-        }).set_index('events')
-    )
+        count_table.event5_counts, df)
 
 
 def test_CountTable_event3_count(count_table):
+    df = pd.DataFrame({
+        'events': [
+            'chr1:5-30:+;chr1:22-30:+',
+            'chr2:10-30:+',
+            'chr2:10-50:-',
+            'chr2:20-50:-'
+        ],
+        's1': [2, 1, 1, 1],
+        's2': [3, 1, 1, 1],
+        's3': [15, 1, 2, 4]
+    }).set_index('events')
+    df = df.astype(dtypes[dtypes.keys().isin(df.columns)])
+
     pd.testing.assert_frame_equal(
-        count_table.event3_counts,
-        pd.DataFrame({
-            'events': [
-                'chr1:5-30:+;chr1:22-30:+',
-                'chr2:10-30:+',
-                'chr2:10-50:-',
-                'chr2:20-50:-'
-            ],
-            's1': [2, 1, 1, 1],
-            's2': [3, 1, 1, 1],
-            's3': [15, 1, 2, 4]
-        }).set_index('events')
-    )
+        count_table.event3_counts, df)
 
 
 def test_CountTable_quantile_filter(count_table):
@@ -305,7 +322,6 @@ def test_event3_median_filter(count_table):
 
 
 def test_CountTable_ref_psi5(count_table):
-
     df = count_table.ref_psi5(method='beta_binomial', annotation=False)
     np.testing.assert_almost_equal(
         df['ref_psi'].tolist(), [1, 1, 1, 0.4, 0.6],
@@ -399,15 +415,15 @@ def test_CountTable_to_from_csv(count_table, tmp_path):
 
 def test_CountTable_junction_report(count_table):
     df = count_table.junction_report('chr2:20-50:-')
-    pd.testing.assert_frame_equal(
-        df,
-        pd.DataFrame({
-            'sample': ['s1', 's2', 's3'],
-            'count': [1, 1, 4],
-            'psi5': [0.5, 0.5, 0.66666667],
-            'psi3': [1.0, 1.0, 1.0]
-        }).set_index('sample')
-    )
+    _df = pd.DataFrame({
+        'sample': ['s1', 's2', 's3'],
+        'count': [1, 1, 4],
+        'psi5': [0.5, 0.5, 0.66666667],
+        'psi3': [1.0, 1.0, 1.0]
+    }).set_index('sample')
+
+    _df = _df.astype(dtypes[dtypes.keys().isin(_df.columns)])
+    pd.testing.assert_frame_equal(df, _df)
 
 
 def test_CountTable_filter(count_table):
@@ -427,99 +443,109 @@ def test_CountTable_filter(count_table):
 def test_CountTable_k(count_table):
     assert count_table.k('chr2:10-50:-').to_dict() \
         == {'s1': 1, 's2': 1, 's3': 2}
+    df = pd.DataFrame({
+        'junctions': [
+            'chr1:5-30:+',
+            'chr2:10-50:-',
+        ],
+        's1': [1,  1],
+        's2': [2,  1],
+        's3': [10, 2]
+    }).set_index('junctions')
+    df = df.astype(dtypes[dtypes.keys().isin(df.columns)])
 
     pd.testing.assert_frame_equal(
-        count_table.k(['chr1:5-30:+', 'chr2:10-50:-']),
-        pd.DataFrame({
-            'junctions': [
-                'chr1:5-30:+',
-                'chr2:10-50:-',
-            ],
-            's1': [1,  1],
-            's2': [2,  1],
-            's3': [10, 2]
-        }).set_index('junctions')
-    )
+        count_table.k(['chr1:5-30:+', 'chr2:10-50:-']), df)
 
 
 def test_CountTable_n5(count_table):
     assert count_table.n5('chr2:10-50:-').to_dict() \
         == {'s1': 2, 's2': 2, 's3': 6}
 
+    df = pd.DataFrame({
+        'junctions': [
+            'chr1:5-30:+',
+            'chr2:10-50:-',
+        ],
+        's1': [1,  2],
+        's2': [2,  2],
+        's3': [10, 6]
+    }).set_index('junctions')
+    df = df.astype(dtypes[dtypes.keys().isin(df.columns)])
+
     pd.testing.assert_frame_equal(
-        count_table.n5(['chr1:5-30:+', 'chr2:10-50:-']),
-        pd.DataFrame({
-            'junctions': [
-                'chr1:5-30:+',
-                'chr2:10-50:-',
-            ],
-            's1': [1,  2],
-            's2': [2,  2],
-            's3': [10, 6]
-        }).set_index('junctions')
-    )
+        count_table.n5(['chr1:5-30:+', 'chr2:10-50:-']), df)
 
 
 def test_CountTable_n3(count_table):
     assert count_table.n3('chr1:5-30:+').to_dict() \
         == {'s1': 2, 's2': 3, 's3': 15}
 
+    df = pd.DataFrame({
+        'junctions': [
+            'chr1:5-30:+',
+            'chr2:10-50:-',
+        ],
+        's1': [2,  1],
+        's2': [3,  1],
+        's3': [15, 2]
+    }).set_index('junctions')
+    df = df.astype(dtypes[dtypes.keys().isin(df.columns)])
+
     pd.testing.assert_frame_equal(
-        count_table.n3(['chr1:5-30:+', 'chr2:10-50:-']),
-        pd.DataFrame({
-            'junctions': [
-                'chr1:5-30:+',
-                'chr2:10-50:-',
-            ],
-            's1': [2,  1],
-            's2': [3,  1],
-            's3': [15, 2]
-        }).set_index('junctions')
-    )
+        count_table.n3(['chr1:5-30:+', 'chr2:10-50:-']),  df)
 
 
 def test_CountTable_kn5(count_table):
+    df = pd.DataFrame({
+        'sample': ['s1', 's2', 's3'],
+        'k': [1, 1, 2],
+        'n': [2, 2, 6]
+    }).set_index('sample')
+    df = df.astype(dtypes[dtypes.keys().isin(df.columns)])
+
     pd.testing.assert_frame_equal(
-        count_table.kn5('chr2:10-50:-'),
-        pd.DataFrame({
-            'sample': ['s1', 's2', 's3'],
-            'k': [1, 1, 2],
-            'n': [2, 2, 6]
-        }).set_index('sample')
-    )
+        count_table.kn5('chr2:10-50:-'), df, check_dtype=False)
 
 
 def test_CountTable_kn3(count_table):
+    df = pd.DataFrame({
+        'sample': ['s1', 's2', 's3'],
+        'k': [1, 2, 10],
+        'n': [2, 3, 15]
+    }).set_index('sample')
+    df = df.astype(dtypes[dtypes.keys().isin(df.columns)])
+
     pd.testing.assert_frame_equal(
-        count_table.kn3('chr1:5-30:+'),
-        pd.DataFrame({
-            'sample': ['s1', 's2', 's3'],
-            'k': [1, 2, 10],
-            'n': [2, 3, 15]
-        }).set_index('sample')
-    )
+        count_table.kn3('chr1:5-30:+'), df, check_dtype=False)
 
 
 def test_CountTable_plot_kn5(count_table, mocker):
     scatter = mocker.patch('seaborn.scatterplot')
     count_table.plot_kn5('chr2:10-50:-')
 
+    df = pd.DataFrame({
+        'sample': ['s1', 's2', 's3'],
+        'k': [1, 1, 2],
+        'n': [2, 2, 6]
+    }).set_index('sample')
+
     args, kwargs = scatter.call_args_list[0]
     assert kwargs['x'] == 'n'
     assert kwargs['y'] == 'k'
     pd.testing.assert_frame_equal(
-        kwargs['data'],
-        pd.DataFrame({
-            'sample': ['s1', 's2', 's3'],
-            'k': [1, 1, 2],
-            'n': [2, 2, 6]
-        }).set_index('sample')
-    )
+        kwargs['data'], df, check_dtype=False)
 
 
 def test_CountTable_plot_kn3(count_table, mocker):
     scatter = mocker.patch('seaborn.scatterplot')
     count_table.plot_kn3('chr1:5-30:+')
+
+    df = pd.DataFrame({
+        'sample': ['s1', 's2', 's3'],
+        'k': [1, 2, 10],
+        'n': [2, 3, 15]
+    }).set_index('sample')
 
     # import matplotlib.pyplot as plt
     # plt.show()
@@ -527,25 +553,19 @@ def test_CountTable_plot_kn3(count_table, mocker):
     assert kwargs['x'] == 'n'
     assert kwargs['y'] == 'k'
     pd.testing.assert_frame_equal(
-        kwargs['data'],
-        pd.DataFrame({
-            'sample': ['s1', 's2', 's3'],
-            'k': [1, 2, 10],
-            'n': [2, 3, 15]
-        }).set_index('sample')
-    )
+        kwargs['data'], df, check_dtype=False)
+
+    df = pd.DataFrame({
+        'sample': ['s1', 's2', 's3'],
+        'k': [1, 2, 10],
+        'n': [2, 3, 15],
+        'outlier': [False, False, True]
+    }).set_index('sample')
 
     count_table.plot_kn3('chr1:5-30:+', highlight=['s3'])
     args, kwargs = scatter.call_args_list[1]
     pd.testing.assert_frame_equal(
-        kwargs['data'],
-        pd.DataFrame({
-            'sample': ['s1', 's2', 's3'],
-            'k': [1, 2, 10],
-            'n': [2, 3, 15],
-            'outlier': [False, False, True]
-        }).set_index('sample')
-    )
+        kwargs['data'], df, check_dtype=False)
 
 
 def test_CountTable_plot_psi5(count_table, mocker):
