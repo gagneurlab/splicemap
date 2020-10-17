@@ -95,7 +95,8 @@ class CountTable:
     def _validate_columns(columns):
         return tuple(columns[:4]) == ('Chromosome', 'Start', 'End', 'Strand')
 
-    def _dtype(self, samples):
+    @staticmethod
+    def _dtype(samples):
         dtype = {
             'Chromosome': 'category',
             'Start': 'int32',
@@ -114,7 +115,7 @@ class CountTable:
                 f'First 4 columns need to be {CountTable.required_columns}'
             samples = columns[4:]
 
-        df = pd.read_csv(csv_path, dtype=self._dtype(samples))
+        df = pd.read_csv(csv_path, dtype=cls._dtype(samples))
         return cls(df)
 
     @property
@@ -513,7 +514,7 @@ class CountTable:
             counts, event_counts, event).iterrows()
         if progress:
             count_rows = tqdm(count_rows, total=counts.shape[0])
-                
+
         for junc, row in count_rows:
             k = row[self.samples].tolist()
             n = row[self._event_samples].tolist()
