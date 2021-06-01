@@ -1,8 +1,6 @@
-import pdb
 import pytest
 import numpy as np
 import pandas as pd
-from pytest_mock import mocker
 from kipoiseq.extractors import MultiSampleVCF
 from count_table.dataclasses import Junction
 from count_table import CountTable, infer_junction_strand
@@ -53,7 +51,7 @@ def count_table():
         's2': [2, 1, 1, 1, 1],
         's3': [10, 5, 1, 2, 4]
     })
-    return CountTable(df)
+    return CountTable(df, name='test_count_table')
 
 
 def count_table_validate():
@@ -82,7 +80,7 @@ def count_table_chr17():
         's1': [1, 1],
         's2': [2, 1]
     })
-    return CountTable(df)
+    return CountTable(df, name='test_count_table')
 
 
 def test_CountTable_infer_strand(count_table):
@@ -94,7 +92,7 @@ def test_CountTable_infer_strand(count_table):
         's1': [1, 1],
         's2': [2, 1]
     })
-    ct = CountTable(df)
+    ct = CountTable(df, name='test_count_table')
 
     ct.infer_strand(fasta_file)
     assert ct.df['Strand'].tolist() == ['-', '+']
@@ -634,28 +632,23 @@ def test_CountTable_plot_psi3_variants(count_table, mocker):
 
 
 def test_CountTable_infer_annotation(count_table_chr17):
-    df = count_table_chr17.infer_annotation(gtf_file, junc_file)
-
+    df = count_table_chr17.infer_annotation(gtf_file)
     pd.testing.assert_frame_equal(
         df,
         pd.DataFrame({
             'junctions': ['17:41197819-41199659:-', '17:41197831-41199670:-'],
-            'gene_id': ['ENSG00000012048.22_5', 'ENSG00000012048'],
+            'gene_id': ['ENSG00000012048', 'ENSG00000012048'],
             'gene_name': ['BRCA1', 'BRCA1'],
             'gene_type': ['protein_coding', 'protein_coding'],
             'weak': [False, True],
             'transcript_id': [
-                'ENST00000586385.5_1;ENST00000591534.5_1;ENST00000461221.5_1;'
-                'ENST00000493795.5_1;ENST00000357654.8_3;ENST00000591849.5_1;'
-                'ENST00000468300.5_2;ENST00000471181.7_3;ENST00000491747.6_3;'
-                'ENST00000352993.7_2;ENST00000644379.1_1',
-                np.nan
+                'ENST00000357654', np.nan
             ]
         }).set_index('junctions'))
 
 
 def test_CountTable_ref_psi5_annnotation(count_table_chr17):
-    count_table_chr17.infer_annotation(gtf_file, junc_file)
+    count_table_chr17.infer_annotation(gtf_file)
     df = count_table_chr17.ref_psi5()
 
     assert df.columns.tolist() == [
@@ -671,7 +664,7 @@ def test_CountTable_ref_psi5_annnotation(count_table_chr17):
 
 
 def test_CountTable_ref_psi3_annnotation(count_table_chr17):
-    count_table_chr17.infer_annotation(gtf_file, junc_file)
+    count_table_chr17.infer_annotation(gtf_file)
     df = count_table_chr17.ref_psi3()
 
     assert df.columns.tolist() == [
@@ -695,7 +688,7 @@ def test_CountTable_join(count_table):
         's4': [1, 1, 1],
         's5': [3, 1, 1],
         's1': [1, 2, 3]
-    }))
+    }), name='test_count_table')
 
     ct = count_table.join(ct_other, suffix='_second')
     ct_expected = CountTable(pd.DataFrame({
@@ -709,7 +702,7 @@ def test_CountTable_join(count_table):
         's4': [0, 1, 1, 0, 0, 1],
         's5': [0, 3, 1, 0, 0, 1],
         's1_second': [0, 1, 3, 0, 0, 2],
-    }))
+    }), name='test_count_table')
     pd.testing.assert_frame_equal(ct.df, ct_expected.df)
 
 
