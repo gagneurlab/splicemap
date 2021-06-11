@@ -14,6 +14,7 @@ from count_table.dataclasses import Junction
 from count_table.utils import get_variants_around_junction, \
     read_genes_from_gtf, remove_chr_from_chrom_annotation
 from count_table.splice_map import SpliceMap
+from count_table.dataclasses import EventPSI5, EventPSI3
 # from mmsplice.utils import logit
 # from mmsplice_scripts.data.utils import clip
 
@@ -602,11 +603,13 @@ class CountTable:
 
     def ref_psi5(self, method='k/n', annotation=True):
         return SpliceMap(self._ref_psi(self.event5_counts, self.event5, self.splice_site5,
-                                       method=method, annotation=annotation))
+                                       method=method, annotation=annotation),
+                        name=self.name)
 
     def ref_psi3(self, method='k/n', annotation=True):
         return SpliceMap(self._ref_psi(self.event3_counts, self.event3, self.splice_site3,
-                                       method=method, annotation=annotation))
+                                       method=method, annotation=annotation),
+                        name=self.name)
 
     def _psi(self, event_counts, event):
         count_rows = self._join_count_with_event_counts(
@@ -708,15 +711,47 @@ class CountTable:
         df_gene_junc = self._gene_junction_overlap(gr_gene)
         df_gtf_junc = self._load_junction_from_gtf(gr_gtf)
 
-        df_gene_junc['weak'] = ~df_gene_junc.index.isin(df_gtf_junc.index)
+        # df_gene_junc['weak'] = ~df_gene_junc.index.isin(df_gtf_junc.index)
 
-        # If not weak, use genes from gtf
+        # # If not weak, use genes from gtf
+        # for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
+        #     df_gene_junc.at[~df_gene_junc['weak'], col] = df_gtf_junc.loc[
+        #         df_gene_junc[~df_gene_junc['weak']].index, col]
+
+        # for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
+        #     df_gene_junc[col] = df_gene_junc[col].str.join(';')
+
+        df_gene_junc['splice_site_psi5'] = df_gene_junc.index.map(
+            lambda x: EventPSI5.from_str(x).donor_str)
+        df_gene_junc['splice_site_psi3'] = df_gene_junc.index.map(
+            lambda x: EventPSI3.from_str(x).acceptor_str)
+        splice_sites5_gtf = set(df_gtf_junc.index.map(
+            lambda x: EventPSI5.from_str(x).donor_str))
+        splice_sites3_gtf = set(df_gtf_junc.index.map(
+            lambda x: EventPSI3.from_str(x).acceptor_str))
+
+        novel_junction = set(df_gene_junc.index).difference(set(df_gtf_junc.index))
+        weak_site_donor = set(
+            df_gene_junc['splice_site_psi5']).difference(splice_sites5_gtf)
+        weak_site_acceptor = set(
+            df_gene_junc['splice_site_psi3']).difference(splice_sites3_gtf)
+
+        df_gene_junc['novel_junction'] = ~df_gene_junc.index.isin(df_gtf_junc.index)
+        df_gene_junc['weak_site_donor'] = df_gene_junc['splice_site_psi5'].isin(
+            weak_site_donor)
+        df_gene_junc['weak_site_acceptor'] = df_gene_junc['splice_site_psi3'].isin(
+            weak_site_acceptor)
+
+        # If not novel_junction, use genes from gtf
         for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
-            df_gene_junc.at[~df_gene_junc['weak'], col] = df_gtf_junc.loc[
-                df_gene_junc[~df_gene_junc['weak']].index, col]
+            df_gene_junc.at[~df_gene_junc['novel_junction'], col] = df_gtf_junc.loc[
+                df_gene_junc[~df_gene_junc['novel_junction']].index, col]
 
         for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
             df_gene_junc[col] = df_gene_junc[col].str.join(';')
+
+        df_gene_junc = df_gene_junc.drop(
+            columns={'splice_site_psi5', 'splice_site_psi3'})
 
         self._annotation = df_gene_junc
         return self._annotation

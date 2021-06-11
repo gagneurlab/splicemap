@@ -320,55 +320,55 @@ def test_event3_median_filter(count_table):
 
 
 def test_CountTable_ref_psi5(count_table):
-    df = count_table.ref_psi5(method='beta_binomial', annotation=False)
+    sm = count_table.ref_psi5(method='beta_binomial', annotation=False)
     np.testing.assert_almost_equal(
-        df['ref_psi'].tolist(), [1, 1, 1, 0.4, 0.6],
+        sm.df['ref_psi'].tolist(), [1, 1, 1, 0.4, 0.6],
         decimal=2
     )
 
-    df = count_table.ref_psi5(method='k/n', annotation=False)
+    sm = count_table.ref_psi5(method='k/n', annotation=False)
     np.testing.assert_almost_equal(
-        df['ref_psi'].tolist(), [1, 1, 1, 0.4, 0.6],
+        sm.df['ref_psi'].tolist(), [1, 1, 1, 0.4, 0.6],
         decimal=2
     )
 
-    df = count_table.ref_psi5(method='mean', annotation=False)
+    sm = count_table.ref_psi5(method='mean', annotation=False)
     np.testing.assert_almost_equal(
-        df['ref_psi'].tolist(), [1, 1, 1, 0.44, 0.55],
+        sm.df['ref_psi'].tolist(), [1, 1, 1, 0.44, 0.55],
         decimal=2
     )
 
-    df1 = count_table.ref_psi5(method='beta_binomial', annotation=False)
-    df2 = count_table.ref_psi5(method='k/n', annotation=False)
+    sm1 = count_table.ref_psi5(method='beta_binomial', annotation=False)
+    sm2 = count_table.ref_psi5(method='k/n', annotation=False)
     np.testing.assert_almost_equal(
-        df1['median_n'].tolist(), df2['median_n'].tolist(),
+        sm1.df['median_n'].tolist(), sm2.df['median_n'].tolist(),
         decimal=2
     )
 
 
 def test_CountTable_ref_psi3(count_table):
-    df = count_table.ref_psi3(method='beta_binomial', annotation=False)
+    sm = count_table.ref_psi3(method='beta_binomial', annotation=False)
     np.testing.assert_almost_equal(
-        df['ref_psi'].tolist(), [.65, .35, 1, 1, 1],
+        sm.df['ref_psi'].tolist(), [.65, .35, 1, 1, 1],
         decimal=2
     )
 
-    df = count_table.ref_psi3(method='k/n', annotation=False)
+    sm = count_table.ref_psi3(method='k/n', annotation=False)
     np.testing.assert_almost_equal(
-        df['ref_psi'].tolist(), [.65, .35, 1, 1, 1],
+        sm.df['ref_psi'].tolist(), [.65, .35, 1, 1, 1],
         decimal=2
     )
 
-    df = count_table.ref_psi3(method='mean', annotation=False)
+    sm = count_table.ref_psi3(method='mean', annotation=False)
     np.testing.assert_almost_equal(
-        df['ref_psi'].tolist(), [0.61, 0.38, 1, 1, 1],
+        sm.df['ref_psi'].tolist(), [0.61, 0.38, 1, 1, 1],
         decimal=2
     )
 
-    df1 = count_table.ref_psi3(method='beta_binomial', annotation=False)
-    df2 = count_table.ref_psi3(method='k/n', annotation=False)
+    sm1 = count_table.ref_psi3(method='beta_binomial', annotation=False)
+    sm2 = count_table.ref_psi3(method='k/n', annotation=False)
     np.testing.assert_almost_equal(
-        df1['median_n'].tolist(), df2['median_n'].tolist(),
+        sm1.df['median_n'].tolist(), sm2.df['median_n'].tolist(),
         decimal=2
     )
 
@@ -640,7 +640,9 @@ def test_CountTable_infer_annotation(count_table_chr17):
             'gene_id': ['ENSG00000012048', 'ENSG00000012048'],
             'gene_name': ['BRCA1', 'BRCA1'],
             'gene_type': ['protein_coding', 'protein_coding'],
-            'weak': [False, True],
+            'novel_junction': [False, True],
+            'weak_site_donor': [False, True],
+            'weak_site_acceptor': [False, True],
             'transcript_id': [
                 'ENST00000357654', np.nan
             ]
@@ -649,34 +651,34 @@ def test_CountTable_infer_annotation(count_table_chr17):
 
 def test_CountTable_ref_psi5_annnotation(count_table_chr17):
     count_table_chr17.infer_annotation(gtf_file)
-    df = count_table_chr17.ref_psi5()
+    sm = count_table_chr17.ref_psi5()
 
-    assert df.columns.tolist() == [
+    assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type', 'weak',
-        'transcript_id']
+        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type', 
+        'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
-    df = count_table_chr17.ref_psi5(method='beta_binomial')
-    assert df.columns.tolist() == [
+    sm = count_table_chr17.ref_psi5(method='beta_binomial')
+    assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type', 'weak',
-        'transcript_id']
+        'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type', 
+        'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
 
 def test_CountTable_ref_psi3_annnotation(count_table_chr17):
     count_table_chr17.infer_annotation(gtf_file)
-    df = count_table_chr17.ref_psi3()
+    sm = count_table_chr17.ref_psi3()
 
-    assert df.columns.tolist() == [
+    assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type', 'weak',
-        'transcript_id']
+        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type', 
+        'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
-    df = count_table_chr17.ref_psi3(method='beta_binomial')
-    assert df.columns.tolist() == [
+    sm = count_table_chr17.ref_psi3(method='beta_binomial')
+    assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type', 'weak',
-        'transcript_id']
+        'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
+        'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
 
 def test_CountTable_join(count_table):
