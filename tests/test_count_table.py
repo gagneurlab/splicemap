@@ -2,8 +2,9 @@ import pytest
 import numpy as np
 import pandas as pd
 from kipoiseq.extractors import MultiSampleVCF
-from count_table.dataclasses import Junction
-from count_table import CountTable, infer_junction_strand
+from splicemap.dataclasses import Junction
+from splicemap import SpliceCountTable as CountTable
+from splicemap import infer_junction_strand
 from kipoiseq.extractors import FastaStringExtractor
 from .conftest import fasta_file, vcf_file, gtf_file, junc_file
 
@@ -655,13 +656,13 @@ def test_CountTable_ref_psi5_annnotation(count_table_chr17):
 
     assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type', 
+        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
     sm = count_table_chr17.ref_psi5(method='beta_binomial')
     assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type', 
+        'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
 
@@ -671,7 +672,7 @@ def test_CountTable_ref_psi3_annnotation(count_table_chr17):
 
     assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type', 
+        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
     sm = count_table_chr17.ref_psi3(method='beta_binomial')

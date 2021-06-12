@@ -1,5 +1,5 @@
 import pyranges as pr
-from count_table.dataclasses import Junction
+from splicemap.dataclasses import Junction
 
 
 def get_variants_around_junction(vcf, junction, sample_id=None,

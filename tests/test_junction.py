@@ -1,4 +1,4 @@
-from count_table.dataclasses import Junction
+from splicemap.dataclasses import Junction
 
 
 def test_Junction():
