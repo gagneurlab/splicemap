@@ -1,4 +1,5 @@
 import colorsys
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -9,9 +10,10 @@ import matplotlib.colors as mc
 from fastbetabino import fit_alpha_beta
 from sklearn.mixture import GaussianMixture
 from kipoiseq.extractors import FastaStringExtractor
-from count_table.dataclasses import Junction
-from count_table.utils import get_variants_around_junction, \
+from splicemap.dataclasses import Junction
+from splicemap.utils import get_variants_around_junction, \
     read_genes_from_gtf, remove_chr_from_chrom_annotation
+from splicemap.splice_map import SpliceMap
 # from mmsplice.utils import logit
 # from mmsplice_scripts.data.utils import clip
 
@@ -62,14 +64,22 @@ def df_to_interval_str(df):
         + df['End'].astype(str) + ':' + df['Strand'].astype(str)
 
 
-class CountTable:
+class SpliceCountTable:
     required_columns = ('Chromosome', 'Start', 'End', 'Strand')
     # TODO: implement optional columns
 
-    def __init__(self, df):
+    def __init__(self, df, name):
+        '''
+        Args:
+          df: pd.DataFrame containing 'Chromosome', 'Start', 'End', 'Strand'
+            and sample counts as columns.
+          name: name of count table will be stored in metadata \
+            (containing dataset, tissue, version .etc)
+        '''
         self.df = df
+        self.name = name
         assert self.validate(df), \
-            f'First 4 columns need to be {CountTable.required_columns}'
+            f'First 4 columns need to be {SpliceCountTable.required_columns}'
         self.df = self.df.astype(self._dtype(self.samples))
         self._set_index()
 
@@ -89,7 +99,7 @@ class CountTable:
 
     @staticmethod
     def validate(df):
-        return CountTable._validate_columns(df.columns)
+        return SpliceCountTable._validate_columns(df.columns)
 
     @staticmethod
     def _validate_columns(columns):
@@ -108,15 +118,26 @@ class CountTable:
         return dtype
 
     @classmethod
-    def read_csv(cls, csv_path):
+    def read_csv(cls, csv_path, name=None):
+        '''
+        Args:
+          csv_path: cvs file containing 'Chromosome', 'Start', 'End', 'Strand'
+            and sample counts as columns.
+          name: name of count table will be stored in metadata \
+            (containing dataset, tissue, version .etc)
+        '''
         with open(csv_path) as f:
             columns = next(f).strip().split(',')
-            assert CountTable._validate_columns(columns), \
-                f'First 4 columns need to be {CountTable.required_columns}'
+            assert SpliceCountTable._validate_columns(columns), \
+                f'First 4 columns need to be {SpliceCountTable.required_columns}'
             samples = columns[4:]
 
         df = pd.read_csv(csv_path, dtype=cls._dtype(samples))
-        return cls(df)
+
+        if name is None:
+            name = Path(csv_path).name.split('.')[0]
+
+        return cls(df, name)
 
     @property
     def junctions(self):
@@ -135,7 +156,7 @@ class CountTable:
         if self._annotation is not None:
             return self._annotation
         else:
-            raise AttributeError('CountTable does not has annotation '
+            raise AttributeError('SpliceCountTable does not has annotation '
                                  'unless `infer_annotation` is called.')
 
     def update_samples(self, mapping):
@@ -163,44 +184,52 @@ class CountTable:
         ]
         self._set_index()
 
+    @staticmethod
+    def _splice_site5_from(df):
+        df_pos = df[df['Strand'] == '+']
+        splice_site_pos = df_pos['Chromosome'].astype(str) + ':' \
+            + df_pos['Start'].astype(str) + ':' + \
+            df_pos['Strand'].astype(str)
+
+        df_neg = df[df['Strand'] == '-']
+        splice_site_neg = df_neg['Chromosome'].astype(str) + ':' \
+            + df_neg['End'].astype(str) + ':' + \
+            df_neg['Strand'].astype(str)
+
+        splice_site = pd.concat([splice_site_pos, splice_site_neg])
+        return pd.DataFrame({
+            'junctions': df.index,
+            'splice_site': splice_site.loc[df.index]
+        }).set_index('junctions')
+
     @property
     def splice_site5(self):
         if self._splice_site5 is None:
-            df_pos = self.df[self.df['Strand'] == '+']
-            splice_site_pos = df_pos['Chromosome'].astype(str) + ':' \
-                + df_pos['Start'].astype(str) + ':' + \
-                df_pos['Strand'].astype(str)
-
-            df_neg = self.df[self.df['Strand'] == '-']
-            splice_site_neg = df_neg['Chromosome'].astype(str) + ':' \
-                + df_neg['End'].astype(str) + ':' + \
-                df_neg['Strand'].astype(str)
-
-            splice_site = pd.concat([splice_site_pos, splice_site_neg])
-            self._splice_site5 = pd.DataFrame({
-                'junctions': self.junctions,
-                'splice_site': splice_site.loc[self.junctions]
-            }).set_index('junctions')
+            self._splice_site5 = self._splice_site5_from(self.df)
         return self._splice_site5
+
+    @staticmethod
+    def _splice_site3_from(df):
+        df_pos = df[df['Strand'] == '+']
+        splice_site_pos = df_pos['Chromosome'].astype(str) + ':' \
+            + df_pos['End'].astype(str) + ':' + \
+            df_pos['Strand'].astype(str)
+
+        df_neg = df[df['Strand'] == '-']
+        splice_site_neg = df_neg['Chromosome'].astype(str) + ':' \
+            + df_neg['Start'].astype(str) + ':' + \
+            df_neg['Strand'].astype(str)
+
+        splice_site = pd.concat([splice_site_pos, splice_site_neg])
+        return pd.DataFrame({
+            'junctions': df.index,
+            'splice_site': splice_site.loc[df.index]
+        }).set_index('junctions')
 
     @property
     def splice_site3(self):
         if self._splice_site3 is None:
-            df_pos = self.df[self.df['Strand'] == '+']
-            splice_site_pos = df_pos['Chromosome'].astype(str) + ':' \
-                + df_pos['End'].astype(str) + ':' + \
-                df_pos['Strand'].astype(str)
-
-            df_neg = self.df[self.df['Strand'] == '-']
-            splice_site_neg = df_neg['Chromosome'].astype(str) + ':' \
-                + df_neg['Start'].astype(str) + ':' + \
-                df_neg['Strand'].astype(str)
-
-            splice_site = pd.concat([splice_site_pos, splice_site_neg])
-            self._splice_site3 = pd.DataFrame({
-                'junctions': self.junctions,
-                'splice_site': splice_site.loc[self.junctions]
-            }).set_index('junctions')
+            self._splice_site3 = self._splice_site3_from(self.df)
         return self._splice_site3
 
     def _event(self, splice_site):
@@ -426,12 +455,12 @@ class CountTable:
             swarm=swarm, plot_type=plot_type)
 
     def filter(self, junctions):
-        return CountTable(self.df.loc[junctions])
+        return SpliceCountTable(self.df.loc[junctions], name=self.name)
 
     def _filter_event(self, junctions, events):
         keep_events = set(events.loc[junctions]['events'])
         event_filter = events['events'].isin(keep_events)
-        return CountTable(self.df.loc[event_filter])
+        return SpliceCountTable(self.df.loc[event_filter], name=self.name)
 
     def filter_event5(self, junctions):
         return self._filter_event(junctions, self.event5)
@@ -458,7 +487,7 @@ class CountTable:
         '''
         percentile_filter = np.percentile(
             self.counts, quantile, axis=1) >= min_read
-        return CountTable(self.df[percentile_filter])
+        return SpliceCountTable(self.df[percentile_filter], name=self.name)
 
     def _median_filter_event_counts(self, event_counts, cutoff=1):
         return event_counts[event_counts.median(axis=1) >= cutoff]
@@ -466,7 +495,8 @@ class CountTable:
     def _median_filter(self, event_counts, event, cutoff=1):
         expressed_events = self._median_filter_event_counts(
             event_counts, cutoff).index
-        ct = CountTable(self.df.loc[event['events'].isin(expressed_events)])
+        ct = SpliceCountTable(self.df.loc[event['events'].isin(
+            expressed_events)], name=self.name)
         return ct
 
     def event5_median_filter(self, cutoff=1):
@@ -489,7 +519,8 @@ class CountTable:
         event_counts = self._median_filter_event_counts(event_counts)
         is_expressed, cutoff = self._is_expressed_events(event_counts)
         expressed_events = event_counts[is_expressed].index
-        ct = CountTable(self.df.loc[event['events'].isin(expressed_events)])
+        ct = SpliceCountTable(self.df.loc[event['events'].isin(
+            expressed_events)], name=self.name)
         return ct, cutoff
 
     def event5_count_filter(self):
@@ -578,12 +609,14 @@ class CountTable:
         return df
 
     def ref_psi5(self, method='k/n', annotation=True):
-        return self._ref_psi(self.event5_counts, self.event5, self.splice_site5,
-                             method=method, annotation=annotation)
+        return SpliceMap(self._ref_psi(self.event5_counts, self.event5, self.splice_site5,
+                                       method=method, annotation=annotation),
+                         name=self.name)
 
     def ref_psi3(self, method='k/n', annotation=True):
-        return self._ref_psi(self.event3_counts, self.event3, self.splice_site3,
-                             method=method, annotation=annotation)
+        return SpliceMap(self._ref_psi(self.event3_counts, self.event3, self.splice_site3,
+                                       method=method, annotation=annotation),
+                         name=self.name)
 
     def _psi(self, event_counts, event):
         count_rows = self._join_count_with_event_counts(
@@ -625,16 +658,27 @@ class CountTable:
         #              color='#ee1f5f', vmin=0, vmax=1)
         return df
 
-    def _pr_genes_from_gtf(self, gtf_file):
-        pr_genes = read_genes_from_gtf(gtf_file)
+    def _pr_genes_from_gtf(self, gr_gtf):
+        pr_genes = gr_gtf.subset(lambda df: df['Feature'] == 'gene')
 
         if not any('chr' in i for i in self.df['Chromosome'].unique()):
             pr_genes = remove_chr_from_chrom_annotation(pr_genes)
 
+        pr_genes = self._infer_gene_type(pr_genes)
         return pr_genes
 
-    def _gene_junction_overlap(self, gtf_file):
-        pr_genes = self._pr_genes_from_gtf(gtf_file)
+    @staticmethod
+    def _infer_gene_type(gr):
+        # Aggregate junctions which can be mapped to multiple genes.
+        if 'gene_type' in gr.columns:
+            pass
+        elif 'gene_biotype' in gr.columns:
+            gr.gene_type = gr.gene_biotype
+        else:
+            raise ValueError('gene_type can not be inferred from gtf file')
+        return gr
+
+    def _gene_junction_overlap(self, pr_genes):
         pr_junctions = pr.PyRanges(self.junction_df.reset_index())
         # Overlap genes and junctions
         df_gene_junc = pr_genes.join(pr_junctions).df
@@ -643,19 +687,6 @@ class CountTable:
             (df_gene_junc['Start'] < df_gene_junc['Start_b'])
             & (df_gene_junc['End'] > df_gene_junc['End_b'])
         ]
-        return df_gene_junc
-
-    def _map_junctions_gene(self, gtf_file):
-        df_gene_junc = self._gene_junction_overlap(gtf_file)
-        # Aggregate junctions which can be mapped to multiple genes.
-
-        if 'gene_type' in df_gene_junc.columns:
-            pass
-        elif 'gene_biotype' in df_gene_junc.columns:
-            df_gene_junc = df_gene_junc.rename(
-                columns={'gene_biotype': 'gene_type'})
-        else:
-            raise ValueError('gene_type can not be inferred from gtf file')
 
         df_gene_junc = df_gene_junc[[
             'junctions', 'gene_id', 'gene_name', 'gene_type'
@@ -663,24 +694,63 @@ class CountTable:
 
         return df_gene_junc
 
-    def _read_junction_file(self, gtf_junction_file):
-        df_gtf = pd.read_csv(gtf_junction_file).set_index('junctions')
+    def _load_junction_from_gtf(self, gr_gtf):
+        gr_junc = gr_gtf.features.introns(by='transcript')
+        gr_junc = self._infer_gene_type(gr_junc)
 
+        df_junc = gr_junc.df
+        df_junc['Strand'] = df_junc['Strand'].astype(str)
+
+        df_junc['junctions'] = df_to_interval_str(df_junc)
+
+        cols_index = ['junctions', 'Chromosome', 'Start', 'End', 'Strand']
+        cols_agg = ['gene_id', 'gene_name', 'transcript_id', 'gene_type']
+
+        df_junc = df_junc[[*cols_index, *cols_agg]] \
+            .groupby(cols_index).agg(lambda x: list(set(x)))
+
+        return df_junc.reset_index().set_index('junctions')
+
+    def _infer_weak_novel(self, df_gene_junc, df_gtf_junc):
+        ss5 = self.splice_site5
+        df_gene_junc.loc[ss5.index, 'splice_site5'] = ss5['splice_site']
+        ss3 = self.splice_site3
+        df_gene_junc.loc[ss3.index, 'splice_site3'] = ss3['splice_site']
+
+        ss5_gtf = self._splice_site5_from(df_gtf_junc)
+        ss3_gtf = self._splice_site3_from(df_gtf_junc)
+
+        novel_junction = set(df_gene_junc.index).difference(
+            set(df_gtf_junc.index))
+        weak_site_donor = set(ss5['splice_site']).difference(
+            ss5_gtf['splice_site'])
+        weak_site_acceptor = set(ss3['splice_site']).difference(
+            ss3_gtf['splice_site'])
+
+        df_gene_junc['novel_junction'] = df_gene_junc.index.isin(
+            novel_junction)
+        df_gene_junc['weak_site_donor'] = df_gene_junc['splice_site5'].isin(
+            weak_site_donor)
+        df_gene_junc['weak_site_acceptor'] = df_gene_junc['splice_site3'].isin(
+            weak_site_acceptor)
+
+        del df_gene_junc['splice_site5']
+        del df_gene_junc['splice_site3']
+        return df_gene_junc
+
+    def infer_annotation(self, gtf_file):
+        gr_gtf = pr.read_gtf(gtf_file)
+        gr_gene = self._pr_genes_from_gtf(gr_gtf)
+
+        df_gene_junc = self._gene_junction_overlap(gr_gene)
+        df_gtf_junc = self._load_junction_from_gtf(gr_gtf)
+
+        df_gene_junc = self._infer_weak_novel(df_gene_junc, df_gtf_junc)
+
+        # If not novel_junction, use genes from gtf
         for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
-            df_gtf[col] = df_gtf[col].str.split(';')
-
-        return df_gtf
-
-    def infer_annotation(self, gtf_file, gtf_junction_file):
-        df_gene_junc = self._map_junctions_gene(gtf_file)
-        df_gtf = self._read_junction_file(gtf_junction_file)
-
-        df_gene_junc['weak'] = ~df_gene_junc.index.isin(df_gtf.index)
-
-        # If not weak, use genes from gtf
-        for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
-            df_gene_junc.at[~df_gene_junc['weak'], col] = df_gtf.loc[
-                df_gene_junc[~df_gene_junc['weak']].index, col]
+            df_gene_junc.at[~df_gene_junc['novel_junction'], col] = df_gtf_junc.loc[
+                df_gene_junc[~df_gene_junc['novel_junction']].index, col]
 
         for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
             df_gene_junc[col] = df_gene_junc[col].str.join(';')
@@ -696,7 +766,7 @@ class CountTable:
             df[i] = np.where(~df[i].isna(), df[i], df[other_col])
             del df[other_col]
 
-        return CountTable(df.fillna(0))
+        return SpliceCountTable(df.fillna(0), name=self.name)
 
     # def _delta_logit_psi(self, psi, ref_psi, clip_threshold=0.01):
     #     ref_psi = clip(ref_psi['ref_psi'].values.reshape((-1, 1)),
