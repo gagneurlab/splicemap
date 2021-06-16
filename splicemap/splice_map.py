@@ -19,6 +19,10 @@ class SpliceMap:
 
             # TODO: split by first :
             name = line.split(':')[1].strip()
+
+            import pdb
+            pdb.set_trace()
+
             return cls(pd.read_csv(f, **kwargs), name)
 
     # def save_combined_ref_tables(self, save_path):
@@ -45,8 +49,6 @@ class SpliceMap:
         return method
 
     def to_csv(path):
-        df = self.ref_psi5(method=method, annotation=annotation)
-
         with open(path, 'w') as f:
             f.write(f'# name: {self.name}')
         df.to_csv(path, mode='a')
