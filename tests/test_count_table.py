@@ -6,7 +6,7 @@ from splicemap.dataclasses import Junction
 from splicemap import SpliceCountTable as CountTable
 from splicemap import infer_junction_strand
 from kipoiseq.extractors import FastaStringExtractor
-from .conftest import fasta_file, vcf_file, gtf_file, junc_file
+from conftest import fasta_file, vcf_file, gtf_file, junc_file
 
 
 def test_infer_junction_strand():
