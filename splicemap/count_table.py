@@ -697,8 +697,11 @@ class SpliceCountTable:
     def _load_junction_from_gtf(self, gr_gtf):
         gr_junc = gr_gtf.features.introns(by='transcript')
         gr_junc = self._infer_gene_type(gr_junc)
+        if not any('chr' in i for i in self.df['Chromosome'].unique()):
+            gr_junc = remove_chr_from_chrom_annotation(gr_junc)
 
         df_junc = gr_junc.df
+        df_junc['Chromosome'] = df_junc['Chromosome'].astype(str)
         df_junc['Strand'] = df_junc['Strand'].astype(str)
 
         df_junc['junctions'] = df_to_interval_str(df_junc)

@@ -1,4 +1,5 @@
 gtf_file = 'tests/data/test.gtf'
+gtf_file_with_chr = 'tests/data/test_with_chr.gtf'
 fasta_file = 'tests/data/hg19.nochr.chr17.fa'
 vcf_file = 'tests/data/test.vcf.gz'
 exon_file = 'tests/data/test_exons.csv'

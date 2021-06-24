@@ -6,7 +6,7 @@ from splicemap.dataclasses import Junction
 from splicemap import SpliceCountTable as CountTable
 from splicemap import infer_junction_strand
 from kipoiseq.extractors import FastaStringExtractor
-from conftest import fasta_file, vcf_file, gtf_file, junc_file
+from conftest import fasta_file, vcf_file, gtf_file, junc_file, gtf_file_with_chr
 
 
 def test_infer_junction_strand():
@@ -634,6 +634,24 @@ def test_CountTable_plot_psi3_variants(count_table, mocker):
 
 def test_CountTable_infer_annotation(count_table_chr17):
     df = count_table_chr17.infer_annotation(gtf_file)
+    pd.testing.assert_frame_equal(
+        df,
+        pd.DataFrame({
+            'junctions': ['17:41197819-41199659:-', '17:41197831-41199670:-'],
+            'gene_id': ['ENSG00000012048', 'ENSG00000012048'],
+            'gene_name': ['BRCA1', 'BRCA1'],
+            'gene_type': ['protein_coding', 'protein_coding'],
+            'novel_junction': [False, True],
+            'weak_site_donor': [False, True],
+            'weak_site_acceptor': [False, True],
+            'transcript_id': [
+                'ENST00000357654', np.nan
+            ]
+        }).set_index('junctions'))
+
+
+def test_CountTable_infer_annotation_with_chr(count_table_chr17):
+    df = count_table_chr17.infer_annotation(gtf_file_with_chr)
     pd.testing.assert_frame_equal(
         df,
         pd.DataFrame({
