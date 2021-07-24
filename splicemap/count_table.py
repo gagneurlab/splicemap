@@ -716,9 +716,9 @@ class SpliceCountTable:
 
     def _infer_weak_novel(self, df_gene_junc, df_gtf_junc):
         ss5 = self.splice_site5
-        df_gene_junc.loc[ss5.index, 'splice_site5'] = ss5['splice_site']
+        df_gene_junc['splice_site5'] = ss5['splice_site']
         ss3 = self.splice_site3
-        df_gene_junc.loc[ss3.index, 'splice_site3'] = ss3['splice_site']
+        df_gene_junc['splice_site3'] = ss3['splice_site']
 
         ss5_gtf = self._splice_site5_from(df_gtf_junc)
         ss3_gtf = self._splice_site3_from(df_gtf_junc)
