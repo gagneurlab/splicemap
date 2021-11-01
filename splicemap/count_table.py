@@ -68,7 +68,7 @@ class SpliceCountTable:
     required_columns = ('Chromosome', 'Start', 'End', 'Strand')
     # TODO: implement optional columns
 
-    def __init__(self, df, name):
+    def __init__(self, df, name, gene_expression=None):
         '''
         Args:
           df: pd.DataFrame containing 'Chromosome', 'Start', 'End', 'Strand'
@@ -83,6 +83,10 @@ class SpliceCountTable:
         self.df = self.df.astype(self._dtype(self.samples))
         self._set_index()
 
+        self._gene_expression = None or gene_expression
+        if gene_expression is not None:
+            self.validate_expression()
+
     def _set_index(self):
         df = self.df.reset_index(drop=True)
         df['junctions'] = df_to_interval_str(df)
@@ -96,11 +100,20 @@ class SpliceCountTable:
         self._psi5 = None
         self._psi3 = None
         self._annotation = None
+        self._gene_expression_median = None
 
     @staticmethod
     def validate(df):
         return SpliceCountTable._validate_columns(df.columns)
 
+    def validate_expression(self):
+        if type(self._gene_expression) is pd.DataFrame:
+            if self._gene_expression.index.name != 'gene_id':
+                if 'gene_id' in self._gene_expression.columns:
+                    self._gene_expression = self._gene_expression.set_index('gene_id')
+                else:
+                    raise '`gene_id` is not index or columns'
+    
     @staticmethod
     def _validate_columns(columns):
         return tuple(columns[:4]) == ('Chromosome', 'Start', 'End', 'Strand')
@@ -118,7 +131,7 @@ class SpliceCountTable:
         return dtype
 
     @classmethod
-    def read_csv(cls, csv_path, name=None):
+    def read_csv(cls, csv_path, name=None, gene_expression_path=None):
         '''
         Args:
           csv_path: cvs file containing 'Chromosome', 'Start', 'End', 'Strand'
@@ -137,11 +150,33 @@ class SpliceCountTable:
         if name is None:
             name = Path(csv_path).name.split('.')[0]
 
-        return cls(df, name)
+        if gene_expression_path is not None:
+            df_exp = pd.read_csv(gene_expression_path).set_index('gene_id')
+        else:
+            df_exp = None
+
+        return cls(df, name, gene_expression=df_exp)
 
     @property
     def junctions(self):
         return self.df.index
+
+    @property
+    def gene_expression_median(self):
+        if self._gene_expression_median is None:
+            if type(self._gene_expression) is dict:
+                self._gene_expression_median = pd.Series(
+                    self._gene_expression, name='gene_tpm')
+            elif type(self._gene_expression) is pd.Series:
+                self._gene_expression_median = self._gene_expression
+                self._gene_expression_median.name = 'gene_tpm'
+                self._gene_expression_median.index.name = None
+            elif type(self._gene_expression) is pd.DataFrame:
+                self._gene_expression_median = self._gene_expression.median(
+                    axis=1)
+                self._gene_expression_median.name = 'gene_tpm'
+                self._gene_expression_median.index.name = None
+        return self._gene_expression_median
 
     @property
     def junction_df(self):
@@ -606,6 +641,10 @@ class SpliceCountTable:
         if annotation:
             df = df.join(self.annotation)
             df = df[~df['gene_name'].isna()]
+
+        if self.gene_expression_median is not None:
+            df = df.join(self.gene_expression_median, on='gene_id')
+            
         return df
 
     def ref_psi5(self, method='k/n', annotation=True):
