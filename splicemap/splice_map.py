@@ -30,12 +30,10 @@ class SpliceMap:
             method = 'mean'
         return method
 
-    def to_csv(path):
-        df = self.ref_psi5(method=method, annotation=annotation)
-
+    def to_csv(self, path):
         with open(path, 'w') as f:
             f.write(f'# name: {self.name}')
-        df.to_csv(path, mode='a')
+        self.df.to_csv(path, mode='a')
 
     @property
     def junctions(self):

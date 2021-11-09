@@ -96,6 +96,7 @@ class SpliceCountTable:
         self._psi5 = None
         self._psi3 = None
         self._annotation = None
+        self._annotation_exploded = None
 
     @staticmethod
     def validate(df):
@@ -156,7 +157,7 @@ class SpliceCountTable:
         if self._annotation is not None:
             return self._annotation
         else:
-            raise AttributeError('SpliceCountTable does not has annotation '
+            raise AttributeError('SpliceCountTable does not have annotation '
                                  'unless `infer_annotation` is called.')
 
     def update_samples(self, mapping):
@@ -678,15 +679,28 @@ class SpliceCountTable:
             raise ValueError('gene_type can not be inferred from gtf file')
         return gr
 
-    def _gene_junction_overlap(self, pr_genes):
+    def _gene_junction_overlap(self, pr_genes, filter_intergenic):
         pr_junctions = pr.PyRanges(self.junction_df.reset_index())
         # Overlap genes and junctions
         df_gene_junc = pr_genes.join(pr_junctions).df
         # Filter inter-genenic junctions
-        df_gene_junc = df_gene_junc[
-            (df_gene_junc['Start'] < df_gene_junc['Start_b'])
-            & (df_gene_junc['End'] > df_gene_junc['End_b'])
-        ]
+        if filter_intergenic == 'complete':
+            df_gene_junc = df_gene_junc[
+                (df_gene_junc['Start'] < df_gene_junc['Start_b'])
+                & (df_gene_junc['End'] > df_gene_junc['End_b'])
+            ]
+        elif  filter_intergenic == 'partial':
+            df_gene_junc = df_gene_junc[
+                (
+                    (df_gene_junc['Start'] < df_gene_junc['Start_b'])
+                    & (df_gene_junc['End'] > df_gene_junc['Start_b'])
+                ) | (
+                    (df_gene_junc['Start'] < df_gene_junc['End_b'])
+                    & (df_gene_junc['End'] > df_gene_junc['End_b'])
+                )
+            ]
+        else:
+            raise ValueError('filter_intergenic must be "complete" or "partial"')
 
         df_gene_junc = df_gene_junc[[
             'junctions', 'gene_id', 'gene_name', 'gene_type'
@@ -695,24 +709,24 @@ class SpliceCountTable:
         return df_gene_junc
 
     def _load_junction_from_gtf(self, gr_gtf):
-        gr_junc = gr_gtf.features.introns(by='transcript')
-        gr_junc = self._infer_gene_type(gr_junc)
+        gr_gtf_junc = gr_gtf.features.introns(by='transcript')
+        gr_gtf_junc = self._infer_gene_type(gr_gtf_junc)
         if not any('chr' in i for i in self.df['Chromosome'].unique()):
-            gr_junc = remove_chr_from_chrom_annotation(gr_junc)
+            gr_gtf_junc = remove_chr_from_chrom_annotation(gr_gtf_junc)
 
-        df_junc = gr_junc.df
-        df_junc['Chromosome'] = df_junc['Chromosome'].astype(str)
-        df_junc['Strand'] = df_junc['Strand'].astype(str)
+        df_gtf_junc = gr_gtf_junc.df
+        df_gtf_junc['Chromosome'] = df_gtf_junc['Chromosome'].astype(str)
+        df_gtf_junc['Strand'] = df_gtf_junc['Strand'].astype(str)
 
-        df_junc['junctions'] = df_to_interval_str(df_junc)
+        df_gtf_junc['junctions'] = df_to_interval_str(df_gtf_junc)
 
         cols_index = ['junctions', 'Chromosome', 'Start', 'End', 'Strand']
         cols_agg = ['gene_id', 'gene_name', 'transcript_id', 'gene_type']
 
-        df_junc = df_junc[[*cols_index, *cols_agg]] \
+        df_gtf_junc = df_gtf_junc[[*cols_index, *cols_agg]] \
             .groupby(cols_index).agg(lambda x: list(set(x)))
 
-        return df_junc.reset_index().set_index('junctions')
+        return df_gtf_junc.reset_index().set_index('junctions')
 
     def _infer_weak_novel(self, df_gene_junc, df_gtf_junc):
         ss5 = self.splice_site5
@@ -741,11 +755,21 @@ class SpliceCountTable:
         del df_gene_junc['splice_site3']
         return df_gene_junc
 
-    def infer_annotation(self, gtf_file):
+    def _main_gene_id(self, gr_gtf):
+        df_gtf = gr_gtf.df
+        df_gtf['gene_id'] = df_gtf['gene_id'].apply(lambda x: x.split('.')[0])
+        return pr.PyRanges(df_gtf)
+
+    # TODO: add blacklist for regions that are enriched for splicing outliers
+    def infer_annotation(self, gtf_file, protein_coding=True, filter_intergenic='complete'):
         gr_gtf = pr.read_gtf(gtf_file)
+        if protein_coding == True:
+            gr_gtf = self._infer_gene_type(gr_gtf)
+            gr_gtf = gr_gtf.subset(lambda df: df['gene_type'] == 'protein_coding')
+        gr_gtf = self._main_gene_id(gr_gtf)
         gr_gene = self._pr_genes_from_gtf(gr_gtf)
 
-        df_gene_junc = self._gene_junction_overlap(gr_gene)
+        df_gene_junc = self._gene_junction_overlap(gr_gene, filter_intergenic)
         df_gtf_junc = self._load_junction_from_gtf(gr_gtf)
 
         df_gene_junc = self._infer_weak_novel(df_gene_junc, df_gtf_junc)
@@ -761,6 +785,18 @@ class SpliceCountTable:
         self._annotation = df_gene_junc
         return self._annotation
 
+    def explode_annotation(self, explode_cols=['gene_id', 'gene_name', 'gene_type']):
+        if self._annotation is not None:
+            df = self._annotation.copy().reset_index()
+            df = df.drop('transcript_id', axis=1)
+            index_cols = [x for x in df.columns if x not in explode_cols]
+            df[explode_cols] = df[explode_cols].apply(lambda x: x.str.split(';'))
+            self._annotation_exploded = df.set_index(index_cols).apply(pd.Series.explode).reset_index().set_index('junctions')
+            return self._annotation_exploded
+        else:
+            raise AttributeError('SpliceCountTable does not have annotation '
+                                 'unless `infer_annotation` is called.')
+        
     def join(self, ct, suffix='_other'):
         df = self.df.join(ct.df, rsuffix=suffix, how='outer')
 

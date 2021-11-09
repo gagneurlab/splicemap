@@ -74,12 +74,12 @@ def count_table_validate():
 @pytest.fixture
 def count_table_chr17():
     df = pd.DataFrame({
-        'Chromosome': ['17', '17'],
-        'Start': [41197819, 41197831],
-        'End': [41199659, 41199670],
-        'Strand': ['-', '-'],
-        's1': [1, 1],
-        's2': [2, 1]
+        'Chromosome': ['17', '17', '17'],
+        'Start': [41197819, 41197831, 42388823],
+        'End': [41199659, 41199670, 42399786],
+        'Strand': ['-', '-', '-'],
+        's1': [1, 1, 1],
+        's2': [2, 1, 2]
     })
     return CountTable(df, name='test_count_table')
 
@@ -633,7 +633,8 @@ def test_CountTable_plot_psi3_variants(count_table, mocker):
 
 
 def test_CountTable_infer_annotation(count_table_chr17):
-    df = count_table_chr17.infer_annotation(gtf_file)
+    df = count_table_chr17.infer_annotation(gtf_file, filter_intergenic='complete')
+    df = df.drop(columns='transcript_id', axis=1)
     pd.testing.assert_frame_equal(
         df,
         pd.DataFrame({
@@ -643,11 +644,29 @@ def test_CountTable_infer_annotation(count_table_chr17):
             'gene_type': ['protein_coding', 'protein_coding'],
             'novel_junction': [False, True],
             'weak_site_donor': [False, True],
-            'weak_site_acceptor': [False, True],
-            'transcript_id': [
-                'ENST00000357654', np.nan
-            ]
+            'weak_site_acceptor': [False, True]
         }).set_index('junctions'))
+
+    df = count_table_chr17.infer_annotation(gtf_file, filter_intergenic='partial')
+    df = df.drop(columns='transcript_id', axis=1)
+    pd.testing.assert_frame_equal(
+        df,
+        pd.DataFrame({
+            'junctions': ['17:41197819-41199659:-', '17:41197831-41199670:-', '17:42388823-42399786:-'],
+            'gene_id': ['ENSG00000012048', 'ENSG00000012048', 'ENSG00000108309;ENSG00000013306'],
+            'gene_name': ['BRCA1', 'BRCA1', 'RUNDC3A;SLC25A39'],
+            'gene_type': ['protein_coding', 'protein_coding', 'protein_coding;protein_coding'],
+            'novel_junction': [False, True, True],
+            'weak_site_donor': [False, True, False],
+            'weak_site_acceptor': [False, True, True]
+        }).set_index('junctions'))
+
+
+def test_CountTable_explode_annotation(count_table_chr17):
+    df = count_table_chr17.infer_annotation(gtf_file, filter_intergenic='partial')
+    assert df['gene_id'].str.split(';').map(len).max() > 1
+    df_exploded = count_table_chr17.explode_annotation()
+    assert df_exploded['gene_id'].str.split(';').map(len).max() == 1
 
 
 def test_CountTable_infer_annotation_with_chr(count_table_chr17):
