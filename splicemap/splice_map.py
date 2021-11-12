@@ -32,7 +32,7 @@ class SpliceMap:
 
     def to_csv(self, path):
         with open(path, 'w') as f:
-            f.write(f'# name: {self.name}')
+            f.write(f'# name: {self.name}\n')
         self.df.to_csv(path, mode='a')
 
     @property
