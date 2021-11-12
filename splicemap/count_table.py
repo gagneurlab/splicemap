@@ -761,12 +761,13 @@ class SpliceCountTable:
         return pr.PyRanges(df_gtf)
 
     # TODO: add blacklist for regions that are enriched for splicing outliers
-    def infer_annotation(self, gtf_file, protein_coding=True, filter_intergenic='complete'):
+    def infer_annotation(self, gtf_file, protein_coding=False, main_gene_id=True, filter_intergenic='complete'):
         gr_gtf = pr.read_gtf(gtf_file)
         if protein_coding == True:
             gr_gtf = self._infer_gene_type(gr_gtf)
             gr_gtf = gr_gtf.subset(lambda df: df['gene_type'] == 'protein_coding')
-        gr_gtf = self._main_gene_id(gr_gtf)
+        if main_gene_id == True:
+            gr_gtf = self._main_gene_id(gr_gtf)
         gr_gene = self._pr_genes_from_gtf(gr_gtf)
 
         df_gene_junc = self._gene_junction_overlap(gr_gene, filter_intergenic)
@@ -806,17 +807,3 @@ class SpliceCountTable:
             del df[other_col]
 
         return SpliceCountTable(df.fillna(0), name=self.name)
-
-    # def _delta_logit_psi(self, psi, ref_psi, clip_threshold=0.01):
-    #     ref_psi = clip(ref_psi['ref_psi'].values.reshape((-1, 1)),
-    #                    threshold=clip_threshold),
-    #     ref_psi = clip(psi.values, clip_threshold=clip_threshold)
-    #     return logit(psi.values) - logit(ref_psi)
-
-    # def delta_logit_psi5(self, method='k/n'):
-    #     return self._delta_logit_psi(
-    #         self.psi5, self.ref_psi5(method=method))
-
-    # def delta_logit_psi3(self, method='k/n'):
-    #     return self._delta_logit_psi(
-    #         self.psi3, self.ref_psi3(method=method))
