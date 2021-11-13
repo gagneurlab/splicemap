@@ -55,6 +55,46 @@ def count_table():
     return CountTable(df, name='test_count_table')
 
 
+def test_count_table_gene_expression():
+    df = pd.DataFrame({
+        'Chromosome': ['chr1', 'chr1', 'chr2', 'chr2', 'chr2'],
+        'Start': [5, 22, 10, 10, 20],
+        'End': [30, 30, 30, 50, 50],
+        'Strand': ['+', '+', '+', '-', '-'],
+        's1': [1, 1, 1, 1, 1],
+        's2': [2, 1, 1, 1, 1],
+        's3': [10, 5, 1, 2, 4]
+    })
+    df_exp = pd.DataFrame({
+        'gene_id': ['gene_a', 'gene_b', 'gene_c'],
+        's1': [1, 2, 3],
+        's2': [1, 2, 3],
+        's3': [1, 2, 3]
+    }).set_index('gene_id')
+
+    ct = CountTable(df, name='test_count_table', gene_expression=df_exp)
+    gene_expression_median = pd.Series([1., 2., 3.],
+                                       index=['gene_a', 'gene_b', 'gene_c'],
+                                       name='gene_tpm')
+    pd.testing.assert_series_equal(
+        ct.gene_expression_median,
+        gene_expression_median
+    )
+
+# @pytest.fixture
+# def count_table_gene():
+#     df = pd.DataFrame({
+#         'Chromosome': ['chr1', 'chr1', 'chr2', 'chr2', 'chr2'],
+#         'Start': [5, 22, 10, 10, 20],
+#         'End': [30, 30, 30, 50, 50],
+#         'Strand': ['+', '+', '+', '-', '-'],
+#         's1': [1, 1, 1, 1, 1],
+#         's2': [2, 1, 1, 1, 1],
+#         's3': [10, 5, 1, 2, 4]
+#     })
+#     return CountTable(df, name='test_count_table', gene_expression=df_gene)
+
+
 def count_table_validate():
     df = pd.DataFrame({
         'index': [1, 2, 3, 4, 5],
@@ -82,6 +122,25 @@ def count_table_chr17():
         's2': [2, 1, 2]
     })
     return CountTable(df, name='test_count_table')
+
+
+@pytest.fixture
+def count_table_chr17_expression():
+    df = pd.DataFrame({
+        'Chromosome': ['17', '17'],
+        'Start': [41197819, 41197831],
+        'End': [41199659, 41199670],
+        'Strand': ['-', '-'],
+        's1': [1, 1],
+        's2': [2, 1]
+    })
+    df_gene = pd.DataFrame({
+        'gene_id': ['ENSG00000012048'],
+        's1': [1],
+        's2': [2],
+        's3': [3]
+    }).set_index('gene_id')
+    return CountTable(df, name='test_count_table', gene_expression=df_gene)
 
 
 def test_CountTable_infer_strand(count_table):
@@ -412,6 +471,33 @@ def test_CountTable_to_from_csv(count_table, tmp_path):
     pd.testing.assert_frame_equal(ct.df, count_table.df)
 
 
+def test_CountTable_to_from_csv_expression(count_table, tmp_path):
+    path = tmp_path / 'count_table.csv'
+    count_table.to_csv(path)
+    count_table.df = count_table.df.astype({
+        'Chromosome': 'category',
+        'Start': 'int32',
+        'End': 'int32',
+        'Strand': 'category',
+        's1': 'int32',
+        's2': 'int32',
+        's3': 'int32'
+    })
+
+    path_exp = tmp_path / 'expression.csv'
+    df_exp = pd.DataFrame({
+        'gene_id': ['ENSG00000012048'],
+        's1': [1],
+        's2': [2],
+        's3': [3]
+    }).set_index('gene_id')
+    df_exp.to_csv(path_exp)
+
+    ct = CountTable.read_csv(path, gene_expression_path=path_exp)
+    pd.testing.assert_frame_equal(ct.df, count_table.df)
+    pd.testing.assert_frame_equal(ct._gene_expression, df_exp)
+
+
 def test_CountTable_junction_report(count_table):
     df = count_table.junction_report('chr2:20-50:-')
     _df = pd.DataFrame({
@@ -703,6 +789,11 @@ def test_CountTable_ref_psi5_annnotation(count_table_chr17):
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
 
+# def test_CountTable_ref_psi5_annnotation(count_table_chr17):
+#     count_table_chr17.infer_annotation(gtf_file)
+#     sm = count_table_chr17.ref_psi5()
+
+    
 def test_CountTable_ref_psi3_annnotation(count_table_chr17):
     count_table_chr17.infer_annotation(gtf_file)
     sm = count_table_chr17.ref_psi3()
@@ -717,6 +808,16 @@ def test_CountTable_ref_psi3_annnotation(count_table_chr17):
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
         'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
+
+
+def test_CountTable_ref_psi5_annnotation_tpm(count_table_chr17_expression):
+    count_table_chr17_expression.infer_annotation(gtf_file)
+    sm = count_table_chr17_expression.ref_psi5()
+    assert sm.df.columns.tolist() == [
+        'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
+        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
+        'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id', 'gene_tpm']
+    assert all(sm.df['gene_tpm'] == 2)
 
 
 def test_CountTable_join(count_table):
