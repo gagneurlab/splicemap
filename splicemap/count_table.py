@@ -491,12 +491,14 @@ class SpliceCountTable:
             swarm=swarm, plot_type=plot_type)
 
     def filter(self, junctions):
-        return SpliceCountTable(self.df.loc[junctions], name=self.name)
+        return SpliceCountTable(self.df.loc[junctions], name=self.name,
+                                gene_expression=self._gene_expression)
 
     def _filter_event(self, junctions, events):
         keep_events = set(events.loc[junctions]['events'])
         event_filter = events['events'].isin(keep_events)
-        return SpliceCountTable(self.df.loc[event_filter], name=self.name)
+        return SpliceCountTable(self.df.loc[event_filter], name=self.name,
+                                gene_expression=self._gene_expression)
 
     def filter_event5(self, junctions):
         return self._filter_event(junctions, self.event5)
@@ -523,7 +525,8 @@ class SpliceCountTable:
         '''
         percentile_filter = np.percentile(
             self.counts, quantile, axis=1) >= min_read
-        return SpliceCountTable(self.df[percentile_filter], name=self.name)
+        return SpliceCountTable(self.df[percentile_filter], name=self.name,
+                                gene_expression=self._gene_expression)
 
     def _median_filter_event_counts(self, event_counts, cutoff=1):
         return event_counts[event_counts.median(axis=1) >= cutoff]
@@ -531,8 +534,10 @@ class SpliceCountTable:
     def _median_filter(self, event_counts, event, cutoff=1):
         expressed_events = self._median_filter_event_counts(
             event_counts, cutoff).index
-        ct = SpliceCountTable(self.df.loc[event['events'].isin(
-            expressed_events)], name=self.name)
+        ct = SpliceCountTable(
+            self.df.loc[event['events'].isin(expressed_events)],
+            name=self.name,
+            gene_expression=self._gene_expression)
         return ct
 
     def event5_median_filter(self, cutoff=1):
@@ -555,8 +560,10 @@ class SpliceCountTable:
         event_counts = self._median_filter_event_counts(event_counts)
         is_expressed, cutoff = self._is_expressed_events(event_counts)
         expressed_events = event_counts[is_expressed].index
-        ct = SpliceCountTable(self.df.loc[event['events'].isin(
-            expressed_events)], name=self.name)
+        ct = SpliceCountTable(
+            self.df.loc[event['events'].isin(expressed_events)],
+            name=self.name,
+            gene_expression=self._gene_expression)
         return ct, cutoff
 
     def event5_count_filter(self):
@@ -845,4 +852,5 @@ class SpliceCountTable:
             df[i] = np.where(~df[i].isna(), df[i], df[other_col])
             del df[other_col]
 
-        return SpliceCountTable(df.fillna(0), name=self.name)
+        return SpliceCountTable(df.fillna(0), name=self.name,
+                                gene_expression=self._gene_expression)
