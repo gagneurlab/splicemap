@@ -33,7 +33,10 @@ class SpliceMap:
     def to_csv(self, path):
         with open(path, 'w') as f:
             f.write(f'# name: {self.name}\n')
-        self.df.to_csv(path, mode='a')
+        df = self.df.copy()
+        if self.df.index.name:
+            df = df.reset_index()
+        df.to_csv(path, mode='a', index=False)
 
     @property
     def junctions(self):
