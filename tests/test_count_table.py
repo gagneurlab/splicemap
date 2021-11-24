@@ -125,6 +125,19 @@ def count_table_chr17():
 
 
 @pytest.fixture
+def count_table_chr1_strand():
+    df = pd.DataFrame({
+        'Chromosome': ['1'],
+        'Start': [62598806],
+        'End': [62601768],
+        'Strand': ['+'],
+        's1': [1],
+        's2': [2]
+    })
+    return CountTable(df, name='test_count_table_two_genes')
+
+
+@pytest.fixture
 def count_table_chr17_expression():
     df = pd.DataFrame({
         'Chromosome': ['17', '17'],
@@ -717,9 +730,9 @@ def test_CountTable_plot_psi3_variants(count_table, mocker):
     count_table.df = df
     count_table.plot_psi3_variants('chr1:5-30:+', vcf)
 
-
+# TODO: add case with 2 genes on different strands
 def test_CountTable_infer_annotation(count_table_chr17):
-    df = count_table_chr17.infer_annotation(gtf_file, filter_intergenic='complete')
+    df = count_table_chr17.infer_annotation(gtf_file, filter_intergenic='complete', strandedness=True)
     df = df.drop(columns='transcript_id', axis=1)
     pd.testing.assert_frame_equal(
         df,
@@ -733,6 +746,13 @@ def test_CountTable_infer_annotation(count_table_chr17):
             'weak_site_acceptor': [False, True]
         }).set_index('junctions'))
 
+def test_CountTable_infer_annotation_strand(count_table_chr1_strand):
+    df_strand = count_table_chr1_strand.infer_annotation(gtf_file, filter_intergenic='complete', strandedness=True)
+    df_no_strand = count_table_chr1_strand.infer_annotation(gtf_file, filter_intergenic='complete', strandedness=False)
+    assert sorted(set(df_strand['gene_name'])) == ['ANGPTL3']
+    assert sorted(set(df_no_strand['gene_name'])) == ['ANGPTL3;DOCK7']
+    
+def test_CountTable_infer_annotation_partial(count_table_chr17):
     df = count_table_chr17.infer_annotation(gtf_file, filter_intergenic='partial')
     df = df.drop(columns='transcript_id', axis=1)
     pd.testing.assert_frame_equal(
