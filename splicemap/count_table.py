@@ -232,10 +232,7 @@ class SpliceCountTable:
             df_neg['Strand'].astype(str)
 
         splice_site = pd.concat([splice_site_pos, splice_site_neg])
-        return pd.DataFrame({
-            'junctions': df.index,
-            'splice_site': splice_site.loc[df.index]
-        }).set_index('junctions')
+        return splice_site.to_frame().rename(columns={0: 'splice_site'})
 
     @property
     def splice_site5(self):
@@ -256,10 +253,7 @@ class SpliceCountTable:
             df_neg['Strand'].astype(str)
 
         splice_site = pd.concat([splice_site_pos, splice_site_neg])
-        return pd.DataFrame({
-            'junctions': df.index,
-            'splice_site': splice_site.loc[df.index]
-        }).set_index('junctions')
+        return splice_site.to_frame().rename(columns={0: 'splice_site'})
 
     @property
     def splice_site3(self):
@@ -729,9 +723,9 @@ class SpliceCountTable:
 
         df_gene_junc = df_gene_junc[[
             'junctions', 'gene_id', 'gene_name', 'gene_type'
-        ]].groupby(by='junctions').agg(list)
+        ]].drop_duplicates()
 
-        return df_gene_junc
+        return df_gene_junc.set_index('junctions')
 
     def _load_junction_from_gtf(self, gr_gtf):
         gr_junc = gr_gtf.features.introns(by='transcript')
@@ -745,13 +739,14 @@ class SpliceCountTable:
 
         df_junc['junctions'] = df_to_interval_str(df_junc)
 
-        cols_index = ['junctions', 'Chromosome', 'Start', 'End', 'Strand']
-        cols_agg = ['gene_id', 'gene_name', 'transcript_id', 'gene_type']
+        cols_index = ['junctions', 'Chromosome', 'Start', 'End', 'Strand',
+                      'gene_id', 'gene_name', 'gene_type']
+        cols_agg = ['transcript_id']
 
         df_junc = df_junc[[*cols_index, *cols_agg]] \
-            .groupby(cols_index).agg(lambda x: list(set(x)))
+            .groupby(cols_index).agg(lambda x: ';'.join(set(x)))
 
-        return df_junc.reset_index().set_index('junctions')
+        return df_junc.reset_index().set_index('junctions').drop_duplicates()
 
     def _infer_weak_novel(self, df_gene_junc, df_gtf_junc):
         ss5 = self.splice_site5
@@ -790,12 +785,18 @@ class SpliceCountTable:
         df_gene_junc = self._infer_weak_novel(df_gene_junc, df_gtf_junc)
 
         # If not novel_junction, use genes from gtf
-        for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
-            df_gene_junc.at[~df_gene_junc['novel_junction'], col] = df_gtf_junc.loc[
-                df_gene_junc[~df_gene_junc['novel_junction']].index, col]
+        gene_junc = df_gene_junc.set_index('gene_id', append=True).index
+        gtf_junc_gene = df_gtf_junc.set_index('gene_id', append=True).index
 
-        for col in ['gene_id', 'gene_name', 'transcript_id', 'gene_type']:
-            df_gene_junc[col] = df_gene_junc[col].str.join(';')
+        df_gene_junc = df_gene_junc[
+            df_gene_junc['novel_junction']
+            | gene_junc.isin(gtf_junc_gene)
+        ]
+
+        col = 'transcript_id'
+        not_novel = ~df_gene_junc['novel_junction']
+        df_gene_junc.loc[not_novel, col] = df_gtf_junc.loc[
+            df_gene_junc[not_novel].index, col]
 
         self._annotation = df_gene_junc
         return self._annotation

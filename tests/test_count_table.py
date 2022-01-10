@@ -6,7 +6,8 @@ from splicemap.dataclasses import Junction
 from splicemap import SpliceCountTable as CountTable
 from splicemap import infer_junction_strand
 from kipoiseq.extractors import FastaStringExtractor
-from conftest import fasta_file, vcf_file, gtf_file, junc_file, gtf_file_with_chr
+from conftest import fasta_file, vcf_file, gtf_file, junc_file, \
+    gtf_file_with_chr, gtf_file_multi
 
 
 def test_infer_junction_strand():
@@ -734,6 +735,31 @@ def test_CountTable_infer_annotation(count_table_chr17):
                 'ENST00000357654', np.nan
             ]
         }).set_index('junctions'))
+
+
+def test_CountTable_infer_annotation_multiple(count_table_chr17):
+    df = count_table_chr17.infer_annotation(gtf_file_multi)
+    pd.testing.assert_frame_equal(
+        df,
+        pd.DataFrame({
+            'junctions': ['17:41197819-41199659:-',
+                          '17:41197831-41199670:-',
+                          '17:41197831-41199670:-'],
+            'gene_id': ['ENSG00000012048', 'ENSG00000012048', 'ENSGBRCAX'],
+            'gene_name': ['BRCA1', 'BRCA1', 'BRCAX'],
+            'gene_type': ['protein_coding',
+                          'protein_coding', 'protein_coding'],
+            'novel_junction': [False, True, True],
+            'weak_site_donor': [False, True, True],
+            'weak_site_acceptor': [False, True, True],
+            'transcript_id': [
+                'ENST00000357654', np.nan, np.nan
+            ]
+        }).set_index('junctions'))
+
+#     __import__("pdb").set_trace()
+#     # TODO: test multiple genes mock _gene_junction_overlap
+#     # TODOD: test _gene_junction_overlap multiple overlap
 
 
 def test_CountTable_infer_annotation_with_chr(count_table_chr17):
