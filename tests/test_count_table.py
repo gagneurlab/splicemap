@@ -832,6 +832,18 @@ def test_CountTable_ref_psi5_annnotation(count_table_chr17):
 #     sm = count_table_chr17.ref_psi5()
 
     
+def test_CountTable_ref_psi5_annnotation_multi(count_table_chr17):
+    count_table_chr17.infer_annotation(gtf_file_multi)
+    sm = count_table_chr17.ref_psi5()
+
+    assert sm.df.columns.tolist() == [
+        'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
+        'ref_psi', 'k', 'n', 'median_n', 'gene_name', 'gene_type',
+        'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
+    assert sorted(sm.df.loc['17:41197831-41199670:-'].index.values) == sorted(['ENSG00000012048', 'ENSGBRCAX'])
+    
+    
+    
 def test_CountTable_ref_psi3_annnotation(count_table_chr17):
     count_table_chr17.infer_annotation(gtf_file)
     sm = count_table_chr17.ref_psi3()

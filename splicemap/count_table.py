@@ -642,7 +642,8 @@ class SpliceCountTable:
 
         if annotation:
             df = df.join(self.annotation)
-            df = df[~df['gene_name'].isna()]
+            df = df[~df.index.get_level_values('gene_id').isna()]
+            # df = df[~df['gene_name'].isna()]
 
         if self.gene_expression_median is not None:
             df = df.join(self.gene_expression_median, on='gene_id')
