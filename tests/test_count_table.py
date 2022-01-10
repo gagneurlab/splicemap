@@ -751,7 +751,7 @@ def test_CountTable_infer_annotation_strand(count_table_chr1_strand):
     df_strand = count_table_chr1_strand.infer_annotation(gtf_file, filter_intergenic='complete', strandedness=True)
     df_no_strand = count_table_chr1_strand.infer_annotation(gtf_file, filter_intergenic='complete', strandedness=False)
     assert sorted(set(df_strand['gene_name'])) == ['ANGPTL3']
-    assert sorted(set(df_no_strand['gene_name'])) == ['ANGPTL3;DOCK7']
+    assert sorted(set(df_no_strand['gene_name'])) == ['ANGPTL3', 'DOCK7']
     
 def test_CountTable_infer_annotation_partial(count_table_chr17):
     df = count_table_chr17.infer_annotation(gtf_file, filter_intergenic='partial')
@@ -759,13 +759,13 @@ def test_CountTable_infer_annotation_partial(count_table_chr17):
     pd.testing.assert_frame_equal(
         df,
         pd.DataFrame({
-            'junctions': ['17:41197819-41199659:-', '17:41197831-41199670:-', '17:42388823-42399786:-'],
-            'gene_id': ['ENSG00000012048', 'ENSG00000012048', 'ENSG00000108309;ENSG00000013306'],
-            'gene_name': ['BRCA1', 'BRCA1', 'RUNDC3A;SLC25A39'],
-            'gene_type': ['protein_coding', 'protein_coding', 'protein_coding;protein_coding'],
-            'novel_junction': [False, True, True],
-            'weak_site_donor': [False, True, False],
-            'weak_site_acceptor': [False, True, True]
+            'junctions': ['17:41197819-41199659:-', '17:41197831-41199670:-', '17:42388823-42399786:-', '17:42388823-42399786:-'],
+            'gene_id': ['ENSG00000012048', 'ENSG00000012048', 'ENSG00000267750', 'ENSG00000013306'],
+            'gene_name': ['BRCA1', 'BRCA1', 'RUNDC3A-AS1', 'SLC25A39'], #RUNDC3A was previously there (but is on + strand)
+            'gene_type': ['protein_coding', 'protein_coding', 'antisense', 'protein_coding'],
+            'novel_junction': [False, True, True, True],
+            'weak_site_donor': [False, True, False, False],
+            'weak_site_acceptor': [False, True, False, False]
         }).set_index('junctions'))
 
 def test_CountTable_infer_annotation_multiple(count_table_chr17):

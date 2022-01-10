@@ -771,10 +771,10 @@ class SpliceCountTable:
                       'gene_id', 'gene_name', 'gene_type']
         cols_agg = ['transcript_id']
 
-        df_junc = df_junc[[*cols_index, *cols_agg]] \
+        df_gtf_junc = df_gtf_junc[[*cols_index, *cols_agg]] \
             .groupby(cols_index).agg(lambda x: ';'.join(set(x)))
 
-        return df_junc.reset_index().set_index('junctions').drop_duplicates()
+        return df_gtf_junc.reset_index().set_index('junctions').drop_duplicates()
 
     def _infer_weak_novel(self, df_gene_junc, df_gtf_junc):
         ss5 = self.splice_site5
