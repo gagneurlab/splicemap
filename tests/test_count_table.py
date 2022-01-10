@@ -745,7 +745,7 @@ def test_CountTable_infer_annotation(count_table_chr17):
             'novel_junction': [False, True],
             'weak_site_donor': [False, True],
             'weak_site_acceptor': [False, True]
-        }).set_index('junctions'))
+        }).set_index(['junctions', 'gene_id']))
 
 def test_CountTable_infer_annotation_strand(count_table_chr1_strand):
     df_strand = count_table_chr1_strand.infer_annotation(gtf_file, filter_intergenic='complete', strandedness=True)
@@ -766,7 +766,7 @@ def test_CountTable_infer_annotation_partial(count_table_chr17):
             'novel_junction': [False, True, True, True],
             'weak_site_donor': [False, True, False, False],
             'weak_site_acceptor': [False, True, False, False]
-        }).set_index('junctions'))
+        }).set_index(['junctions', 'gene_id']))
 
 def test_CountTable_infer_annotation_multiple(count_table_chr17):
     df = count_table_chr17.infer_annotation(gtf_file_multi)
@@ -786,7 +786,7 @@ def test_CountTable_infer_annotation_multiple(count_table_chr17):
             'transcript_id': [
                 'ENST00000357654', np.nan, np.nan
             ]
-        }).set_index('junctions'))
+        }).set_index(['junctions', 'gene_id']))
 
 #     __import__("pdb").set_trace()
 #     # TODO: test multiple genes mock _gene_junction_overlap
@@ -808,7 +808,7 @@ def test_CountTable_infer_annotation_with_chr(count_table_chr17):
             'transcript_id': [
                 'ENST00000357654', np.nan
             ]
-        }).set_index('junctions'))
+        }).set_index(['junctions', 'gene_id']))
 
 
 def test_CountTable_ref_psi5_annnotation(count_table_chr17):
@@ -817,13 +817,13 @@ def test_CountTable_ref_psi5_annnotation(count_table_chr17):
 
     assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
+        'ref_psi', 'k', 'n', 'median_n', 'gene_name', 'gene_type',
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
     sm = count_table_chr17.ref_psi5(method='beta_binomial')
     assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
+        'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_name', 'gene_type',
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
 
@@ -838,13 +838,13 @@ def test_CountTable_ref_psi3_annnotation(count_table_chr17):
 
     assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
+        'ref_psi', 'k', 'n', 'median_n', 'gene_name', 'gene_type',
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
     sm = count_table_chr17.ref_psi3(method='beta_binomial')
     assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
+        'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n', 'gene_name', 'gene_type',
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
 
@@ -853,7 +853,7 @@ def test_CountTable_ref_psi5_annnotation_tpm(count_table_chr17_expression):
     sm = count_table_chr17_expression.ref_psi5()
     assert sm.df.columns.tolist() == [
         'Chromosome', 'Start', 'End', 'Strand', 'splice_site', 'events',
-        'ref_psi', 'k', 'n', 'median_n', 'gene_id', 'gene_name', 'gene_type',
+        'ref_psi', 'k', 'n', 'median_n', 'gene_name', 'gene_type',
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id', 'gene_tpm']
     assert all(sm.df['gene_tpm'] == 2)
 

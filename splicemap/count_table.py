@@ -825,8 +825,11 @@ class SpliceCountTable:
         df_gene_junc = self._infer_weak_novel(df_gene_junc, df_gtf_junc)
 
         # If not novel_junction, use genes from gtf
-        gene_junc = df_gene_junc.set_index('gene_id', append=True).index
-        gtf_junc_gene = df_gtf_junc.set_index('gene_id', append=True).index
+        df_gene_junc = df_gene_junc.set_index('gene_id', append=True)
+        df_gtf_junc = df_gtf_junc.set_index('gene_id', append=True)
+        
+        gene_junc = df_gene_junc.index
+        gtf_junc_gene = df_gtf_junc.index
 
         df_gene_junc = df_gene_junc[
             df_gene_junc['novel_junction']
