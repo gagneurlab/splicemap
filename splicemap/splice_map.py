@@ -34,7 +34,7 @@ class SpliceMap:
         with open(path, 'w') as f:
             f.write(f'# name: {self.name}\n')
         df = self.df.copy()
-        if self.df.index.name:
+        if not isinstance(df.index, pd.RangeIndex):
             df = df.reset_index()
         df.to_csv(path, mode='a', index=False)
 
