@@ -1,4 +1,3 @@
-# gtf_file = 'tests/data/test.gtf'
 gtf_file = 'tests/data/gtf_chr17.gtf'
 gtf_file_multi = 'tests/data/test_multi.gtf'
 gtf_file_with_chr = 'tests/data/test_with_chr.gtf'
@@ -9,5 +8,9 @@ junction_file = 'tests/data/test_junction.csv'
 junction_psi5_file = 'tests/data/test_junction_psi5_file.csv'
 junction_psi3_file = 'tests/data/test_junction_psi3_file.csv'
 junc_file = 'tests/data/test_junc.csv'
-ref_table5_kn_testis = 'tests/data/test_testis_ref_table5_kn.csv'
-ref_table3_kn_testis = 'tests/data/test_testis_ref_table3_kn.csv'
+
+tpm_file = 'tests/data/test_tpm.csv'
+count_table_file = 'tests/data/test_count_chr17.csv'
+
+ref_table5_kn = 'tests/data/test_ref_table5_kn.csv'
+ref_table3_kn = 'tests/data/test_ref_table3_kn.csv'

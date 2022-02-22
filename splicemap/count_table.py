@@ -9,13 +9,12 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mc
 from fastbetabino import fit_alpha_beta
 from sklearn.mixture import GaussianMixture
-from kipoiseq.extractors import FastaStringExtractor, fasta
+from kipoiseq.extractors import FastaStringExtractor
 from splicemap.dataclasses import Junction
 from splicemap.utils import get_variants_around_junction, \
-    read_genes_from_gtf, remove_chr_from_chrom_annotation
+    remove_chr_from_chrom_annotation
 from splicemap.splice_map import SpliceMap
-# from mmsplice.utils import logit
-# from mmsplice_scripts.data.utils import clip
+
 
 gt_mapping = {0: 'AA',  1: 'Aa', 3: 'aa',  2: 'NN'}
 
@@ -108,13 +107,16 @@ class SpliceCountTable:
         return SpliceCountTable._validate_columns(df.columns)
 
     def validate_expression(self):
-        if type(self._gene_expression) is pd.DataFrame:
-            if self._gene_expression.index.name != 'gene_id':
-                if 'gene_id' in self._gene_expression.columns:
-                    self._gene_expression = self._gene_expression.set_index(
-                        'gene_id')
-                else:
-                    raise '`gene_id` is not index or columns'
+        if self._gene_expression.index.name != 'gene_id':
+            if 'gene_id' in self._gene_expression.columns:
+                self._gene_expression = self._gene_expression.set_index(
+                    'gene_id')
+            else:
+                raise ValueError('`gene_id` is not index or columns')
+
+        if not self._gene_expression.index.is_unique:
+            raise ValueError(
+                '`gene_id` in the expression file need to be unique!')
 
     @staticmethod
     def _validate_columns(columns):
@@ -611,18 +613,6 @@ class SpliceCountTable:
             'median_n': median_n
         }).set_index('junctions')
 
-    def _ref_psi_with_mean_std(self, counts, event_counts, event):
-        count_rows = self._join_count_with_event_counts(
-            counts, event_counts, event)
-        k = count_rows[self.samples].values
-        n = count_rows[self._event_samples].values
-        psi = k / n
-        return pd.DataFrame({
-            'junctions': count_rows.index,
-            'ref_psi': np.nanmean(psi, axis=1),
-            'std': np.nanstd(psi, axis=1)
-        }).set_index('junctions')
-
     def _ref_psi(self, event_counts, event, splice_site, method, annotation=True):
         if method == 'beta_binomial':
             df = pd.DataFrame([
@@ -632,9 +622,6 @@ class SpliceCountTable:
                 .set_index('junctions')
         elif method == 'k/n':
             df = self._ref_psi_with_kn(
-                self.counts, event_counts, event)
-        elif method == 'mean':
-            df = self._ref_psi_with_mean_std(
                 self.counts, event_counts, event)
         else:
             raise ValueError('method name %s is valid' % method)
@@ -801,12 +788,15 @@ class SpliceCountTable:
     # TODO: add blacklist for regions that are enriched for splicing outliers
     def infer_annotation(self, gtf_file, protein_coding=False, main_gene_id=True):
         gr_gtf = pr.read_gtf(gtf_file)
-        if protein_coding == True:
+
+        if protein_coding:
             gr_gtf = self._infer_gene_type(gr_gtf)
             gr_gtf = gr_gtf.subset(
                 lambda df: df['gene_type'] == 'protein_coding')
-        if main_gene_id == True:
+
+        if main_gene_id:
             gr_gtf = self._main_gene_id(gr_gtf)
+
         gr_gene = self._pr_genes_from_gtf(gr_gtf)
 
         df_gene_junc = self._gene_junction_overlap(gr_gene)
