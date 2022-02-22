@@ -27,7 +27,7 @@ requirements = [
 
 setup_requirements = ['pytest-runner', ]
 
-test_requirements = ['pytest', 'pytest-benchmark']
+test_requirements = ['pytest', 'pytest-mock', 'cyvcf2']
 
 setup(
     author="M. Hasan Celik & Nils Wagner",

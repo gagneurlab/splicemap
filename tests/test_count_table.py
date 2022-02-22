@@ -7,7 +7,7 @@ from splicemap import SpliceCountTable as CountTable
 from splicemap import infer_junction_strand
 from kipoiseq.extractors import FastaStringExtractor
 from conftest import fasta_file, vcf_file, gtf_file, junc_file, \
-    gtf_file_with_chr, gtf_file_multi
+    gtf_file_with_chr, gtf_file_multi, count_table_file, tpm_file
 
 
 def test_infer_junction_strand():
@@ -55,6 +55,19 @@ def count_table():
     })
     return CountTable(df, name='test_count_table')
 
+# @pytest.fixture
+# def count_table_gene():
+#     df = pd.DataFrame({
+#         'Chromosome': ['chr1', 'chr1', 'chr2', 'chr2', 'chr2'],
+#         'Start': [5, 22, 10, 10, 20],
+#         'End': [30, 30, 30, 50, 50],
+#         'Strand': ['+', '+', '+', '-', '-'],
+#         's1': [1, 1, 1, 1, 1],
+#         's2': [2, 1, 1, 1, 1],
+#         's3': [10, 5, 1, 2, 4]
+#     })
+#     return CountTable(df, name='test_count_table', gene_expression=df_gene)
+
 
 def test_count_table_gene_expression():
     df = pd.DataFrame({
@@ -82,18 +95,14 @@ def test_count_table_gene_expression():
         gene_expression_median
     )
 
-# @pytest.fixture
-# def count_table_gene():
-#     df = pd.DataFrame({
-#         'Chromosome': ['chr1', 'chr1', 'chr2', 'chr2', 'chr2'],
-#         'Start': [5, 22, 10, 10, 20],
-#         'End': [30, 30, 30, 50, 50],
-#         'Strand': ['+', '+', '+', '-', '-'],
-#         's1': [1, 1, 1, 1, 1],
-#         's2': [2, 1, 1, 1, 1],
-#         's3': [10, 5, 1, 2, 4]
-#     })
-#     return CountTable(df, name='test_count_table', gene_expression=df_gene)
+    with pytest.raises(ValueError):
+        df_exp = pd.DataFrame({
+            'gene_id': ['gene_a', 'gene_a', 'gene_c'],
+            's1': [1, 2, 3],
+            's2': [1, 2, 3],
+            's3': [1, 2, 3]
+        }).set_index('gene_id')
+        ct = CountTable(df, name='test_count_table', gene_expression=df_exp)
 
 
 def count_table_validate():
@@ -406,12 +415,6 @@ def test_CountTable_ref_psi5(count_table):
         decimal=2
     )
 
-    sm = count_table.ref_psi5(method='mean', annotation=False)
-    np.testing.assert_almost_equal(
-        sm.df['ref_psi'].tolist(), [1, 1, 1, 0.44, 0.55],
-        decimal=2
-    )
-
     sm1 = count_table.ref_psi5(method='beta_binomial', annotation=False)
     sm2 = count_table.ref_psi5(method='k/n', annotation=False)
     np.testing.assert_almost_equal(
@@ -430,12 +433,6 @@ def test_CountTable_ref_psi3(count_table):
     sm = count_table.ref_psi3(method='k/n', annotation=False)
     np.testing.assert_almost_equal(
         sm.df['ref_psi'].tolist(), [.65, .35, 1, 1, 1],
-        decimal=2
-    )
-
-    sm = count_table.ref_psi3(method='mean', annotation=False)
-    np.testing.assert_almost_equal(
-        sm.df['ref_psi'].tolist(), [0.61, 0.38, 1, 1, 1],
         decimal=2
     )
 
@@ -813,11 +810,6 @@ def test_CountTable_ref_psi5_annnotation(count_table_chr17):
         'novel_junction', 'weak_site_donor', 'weak_site_acceptor', 'transcript_id']
 
 
-# def test_CountTable_ref_psi5_annnotation(count_table_chr17):
-#     count_table_chr17.infer_annotation(gtf_file)
-#     sm = count_table_chr17.ref_psi5()
-
-
 def test_CountTable_ref_psi5_annnotation_multi(count_table_chr17):
     count_table_chr17.infer_annotation(gtf_file_multi)
     sm = count_table_chr17.ref_psi5()
@@ -883,26 +875,21 @@ def test_CountTable_join(count_table):
     pd.testing.assert_frame_equal(ct.df, ct_expected.df)
 
 
-# def test_CountTable_delta_logit_psi5(count_table):
-#     delta_logit_psi = count_table.delta_logit_psi5()
-#     np.testing.assert_almost_equal(
-#         delta_logit_psi,
-#         np.array([[0.,  0.,  0.],
-#                   [0.,  0.,  0.],
-#                   [0.,  0.,  0.],
-#                   [0.40546511,  0.40546511, -0.28768207],
-#                   [-0.40546511, -0.40546511,  0.28768207]]
-#                  )
-#     )
+def test_CountTable_chr17_ref_table():
+    ct = CountTable.read_csv(count_table_file, 'example', tpm_file)
+    ct.infer_annotation(gtf_file)
 
-# def test_CountTable_delta_logit_psi3(count_table):
-#     delta_logit_psi = count_table.delta_logit_psi3()
-#     np.testing.assert_almost_equal(
-#         delta_logit_psi,
-#         np.array([[-0.61903921,  0.07410797,  0.07410797],
-#                   [0.61903921, -0.07410797, -0.07410797],
-#                   [0.,  0.,  0.],
-#                   [0.,  0.,  0.],
-#                   [0.,  0.,  0.]]
-#                  )
-#     )
+    cols = [
+        'Chromosome', 'Start', 'End', 'Strand',
+        'splice_site', 'events', 'ref_psi', 'k', 'n',
+        'median_n', 'gene_name', 'gene_type', 'novel_junction',
+        'weak_site_donor', 'weak_site_acceptor', 'transcript_id', 'gene_tpm'
+    ]
+
+    ss5 = ct.ref_psi5()
+    assert ss5.df.index.is_unique
+    assert sorted(list(ss5.df.columns)) == list(sorted(cols))
+
+    ss3 = ct.ref_psi3()
+    assert ss3.df.index.is_unique
+    assert sorted(list(ss3.df.columns)) == sorted(list(cols))
