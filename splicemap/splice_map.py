@@ -1,4 +1,5 @@
 import pandas as pd
+import gzip
 
 
 class SpliceMap:
@@ -10,14 +11,17 @@ class SpliceMap:
 
     @classmethod
     def read_csv(cls, path, **kwargs):
-        with open(path) as f:
-            line = f.readline()
-            assert line.startswith('# name: '), \
-                'Name field not defined in metadata'
+        if str(path).endswith('.gz'):
+            f = gzip.open(path)
+        else:
+            f = open(path)
+        line = f.readline()
+        assert line.startswith('# name: '), \
+            'Name field not defined in metadata'
 
-            # TODO: split by first :
-            name = line.split(':')[1].strip()
-            return cls(pd.read_csv(f, **kwargs), name)
+        # TODO: split by first :
+        name = line.split(':')[1].strip()
+        return cls(pd.read_csv(f, **kwargs), name)
 
     @staticmethod
     def _infer_method(df):
