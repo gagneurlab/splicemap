@@ -30,7 +30,7 @@ def test_Splicemap_valid(splicemap5_kn, splicemap3_kn):
 
 
 def test_SpliceMap_to_from_csv(splicemap5_kn, tmp_path):
-    path = tmp_path / 'splicemap.csv'
+    path = tmp_path / 'splicemap.csv.gz'
     splicemap5_kn.to_csv(path)
     sm = SpliceMap.read_csv(path)
     pd.testing.assert_frame_equal(

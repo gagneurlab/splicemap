@@ -11,17 +11,14 @@ class SpliceMap:
 
     @classmethod
     def read_csv(cls, path, **kwargs):
-        if str(path).endswith('.gz'):
-            f = gzip.open(path)
-        else:
-            f = open(path)
-        line = f.readline()
-        assert line.startswith('# name: '), \
-            'Name field not defined in metadata'
+        with gzip.open(path, 'rt') as f:
+            line = f.readline()
+            assert line.startswith('# name: '), \
+                'Name field not defined in metadata'
 
-        # TODO: split by first :
-        name = line.split(':')[1].strip()
-        return cls(pd.read_csv(f, **kwargs), name)
+            # TODO: split by first :
+            name = line.split(':')[1].strip()
+            return cls(pd.read_csv(f, **kwargs), name)
 
     @staticmethod
     def _infer_method(df):
@@ -34,7 +31,7 @@ class SpliceMap:
         return method
 
     def to_csv(self, path):
-        with open(path, 'w') as f:
+        with gzip.open(path, 'wt') as f:
             f.write(f'# name: {self.name}\n')
         df = self.df.copy()
         if not isinstance(df.index, pd.RangeIndex):

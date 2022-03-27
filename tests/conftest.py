@@ -12,5 +12,5 @@ junc_file = 'tests/data/test_junc.csv'
 tpm_file = 'tests/data/test_tpm.csv'
 count_table_file = 'tests/data/test_count_chr17.csv'
 
-ref_table5_kn = 'tests/data/test_ref_table5_kn.csv'
-ref_table3_kn = 'tests/data/test_ref_table3_kn.csv'
+ref_table5_kn = 'tests/data/test_ref_table5_kn.csv.gz'
+ref_table3_kn = 'tests/data/test_ref_table3_kn.csv.gz'
