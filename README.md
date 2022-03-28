@@ -45,3 +45,10 @@ pip install -e .
 -------------------
 
 Check [notebooks/example.ipynb](https://gitlab.cmm.in.tum.de/gagneurlab/count_table/-/tree/master/notebooks/example.ipynb)
+
+
+### Download precomputed SpliceMaps from Zenodo
+```bash
+splicemap_download --version {version} --splicemap_path {output_path}
+```
+Supported versions (gtex_v8).

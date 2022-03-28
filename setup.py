@@ -52,6 +52,10 @@ setup(
     name='splicemap',
     packages=find_packages(include=['splicemap']),
     setup_requires=setup_requirements,
+    entry_points='''
+        [console_scripts]
+        splicemap_download=splicemap.main:splicemap_download
+    ''',
     #     dependency_links=['http://github.com/lfiaschi/fastbetabino/tarball/master#egg=fastbetabino'],
     test_suite='tests',
     tests_require=test_requirements,
