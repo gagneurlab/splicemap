@@ -3,7 +3,7 @@ import click
 import tarfile
 import requests
 from tqdm import tqdm
-import pathlib
+from pathlib import Path
 from urllib.parse import unquote
 
 gtex_v8_tissues = [
@@ -82,6 +82,7 @@ def splicemap_download(version, splicemap_path):
     
     for url in tqdm(splicemap_url[version]):
         r = requests.get(url)
-        fname = splicemap_path + unquote(pathlib.Path(url).name).replace('?download=1', '')
+        fname = Path(splicemap_path) / \
+            unquote(Path(url).name).replace('?download=1', '')
         with open(fname, 'wb') as fd:
             fd.write(r.content)
