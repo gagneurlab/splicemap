@@ -45,7 +45,7 @@ SpliceMaps contain the following information:
 -----------------
 Clone git repository of splicemap:
 ```
-git clone git@gitlab.cmm.in.tum.de:gagneurlab/splicemap.git
+git clone git@github.com:gagneurlab/splicemap.git
 
 ```
 cd into repo directory:
