@@ -82,7 +82,9 @@ def splicemap_download(version, splicemap_path):
     
     for url in tqdm(splicemap_url[version]):
         r = requests.get(url)
-        fname = Path(splicemap_path) / \
-            unquote(Path(url).name).replace('?download=1', '')
+        fname = Path(splicemap_path)
+        fname.mkdir(exist_ok = True)
+        fname = fname / unquote(Path(url).name).replace('?download=1', '')
+        
         with open(fname, 'wb') as fd:
             fd.write(r.content)

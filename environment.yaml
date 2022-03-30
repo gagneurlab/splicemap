@@ -1,0 +1,13 @@
+name: splicemap
+channels:
+  - defaults
+  - conda-forge
+  - bioconda
+dependencies:
+  - python >= 3.8
+  - cython
+  - cyvcf2
+  - pip
+- pip:
+  - git+https://github.com/gagneurlab/splicemap.git
+    

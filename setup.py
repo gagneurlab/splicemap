@@ -21,7 +21,8 @@ requirements = [
     'matplotlib',
     'kipoiseq>=0.3.0',
     'fastbetabino3',
-    'pyranges>=0.0.71'
+    'pyranges>=0.0.71',
+    'wget',
 ]
 
 
