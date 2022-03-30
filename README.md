@@ -60,7 +60,7 @@ mamba env create -f environment.yaml
 # otherwise
 conda env create -f environment.yaml
 ```
-Install splicemap into conda environment:
+Activate conda environment:
 ```
 conda activate splicemap
 ```
