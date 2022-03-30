@@ -74,6 +74,6 @@ Check [notebooks/example.ipynb](https://github.com/gagneurlab/splicemap/blob/mas
 
 ### Download precomputed SpliceMaps from Zenodo
 ```bash
-splicemap_download --version {version} --splicemap_path {output_path}
+splicemap_download --version {version} --splicemap_dir {output_dir}
 ```
 Supported versions (gtex_v8).

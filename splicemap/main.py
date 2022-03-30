@@ -72,8 +72,8 @@ splicemap_url = {
 
 @click.command()
 @click.option('--version', help='SpliceMap version (currently SpliceMaps from gtex_v8 (hg38) supported)')
-@click.option('--splicemap_path', help='Path to download SpliceMaps')
-def splicemap_download(version, splicemap_path):
+@click.option('--splicemap_dir', help='Path to download SpliceMaps')
+def splicemap_download(version, splicemap_dir):
 
     if version not in splicemap_url:
         raise(f'Version {version} is not supported.')
@@ -82,7 +82,7 @@ def splicemap_download(version, splicemap_path):
     
     for url in tqdm(splicemap_url[version]):
         r = requests.get(url)
-        fname = Path(splicemap_path)
+        fname = Path(splicemap_dir)
         fname.mkdir(exist_ok = True)
         fname = fname / unquote(Path(url).name).replace('?download=1', '')
         
