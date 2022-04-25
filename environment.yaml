@@ -5,9 +5,10 @@ channels:
   - bioconda
 dependencies:
   - python >= 3.8
+  - pandas
   - cython
   - cyvcf2
   - pip
-- pip:
-  - git+https://github.com/gagneurlab/splicemap.git
+  - pip:
+    - git+https://github.com/gagneurlab/splicemap.git
     
