@@ -70,10 +70,28 @@ splicemap_url = {
     ]
 }
 
+def check_tissue_in_url(url, tissues):
+    in_url = False
+    for tissue in tissues:
+        if tissue in url:
+            in_url = True
+    return in_url
+
+def _download(url, splicemap_dir):
+    r = requests.get(url)
+    fname = Path(splicemap_dir)
+    fname.mkdir(exist_ok=True)
+    fname = fname / \
+        unquote(Path(url).name).replace('?download=1', '')
+    print(fname)
+    with open(fname, 'wb') as fd:
+        fd.write(r.content)
+
 @click.command()
 @click.option('--version', help='SpliceMap version (currently SpliceMaps from gtex_v8 (hg38) supported)')
 @click.option('--splicemap_dir', help='Path to download SpliceMaps')
-def splicemap_download(version, splicemap_dir):
+@click.option('--tissues', multiple=True, help='List of tissue names to download')
+def splicemap_download(version, splicemap_dir, tissues=None):
 
     if version not in splicemap_url:
         raise(f'Version {version} is not supported.')
@@ -81,10 +99,8 @@ def splicemap_download(version, splicemap_dir):
     print('Downloading SpliceMaps...')
     
     for url in tqdm(splicemap_url[version]):
-        r = requests.get(url)
-        fname = Path(splicemap_dir)
-        fname.mkdir(exist_ok = True)
-        fname = fname / unquote(Path(url).name).replace('?download=1', '')
-        
-        with open(fname, 'wb') as fd:
-            fd.write(r.content)
+        if tissues:
+            if check_tissue_in_url(url, tissues):
+                _download(url, splicemap_dir)
+        else:
+            _download(url, splicemap_dir)
