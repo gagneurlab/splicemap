@@ -76,4 +76,4 @@ Check [notebooks/example.ipynb](https://github.com/gagneurlab/splicemap/blob/mas
 ```bash
 splicemap_download --version {version} --splicemap_dir {output_dir}
 ```
-Supported versions (gtex_v8).
+Supported versions: 'gtex_v8' (hg38) and 'gtex_v7' (hg19).
