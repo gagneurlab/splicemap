@@ -17,7 +17,7 @@ requirements = [
     'pandas',
     'tqdm',
     'seaborn',
-    'sklearn',
+    'scikit-learn',
     'matplotlib',
     'kipoiseq>=0.3.0',
     'fastbetabino3',
