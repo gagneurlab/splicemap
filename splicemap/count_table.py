@@ -7,7 +7,7 @@ import seaborn as sns
 import pyranges as pr
 import matplotlib.pyplot as plt
 import matplotlib.colors as mc
-from fastbetabino import fit_alpha_beta
+# from fastbetabino import fit_alpha_beta
 from sklearn.mixture import GaussianMixture
 from kipoiseq.extractors import FastaStringExtractor
 from splicemap.dataclasses import Junction
@@ -579,25 +579,25 @@ class SpliceCountTable:
     def _event_samples(self):
         return ['%s_event' % i for i in self.samples]
 
-    def _ref_psi_with_beta_binomial(self, counts, event_counts,
-                                    event, progress=False, niter=1000):
-        count_rows = self._join_count_with_event_counts(
-            counts, event_counts, event).iterrows()
-        if progress:
-            count_rows = tqdm(count_rows, total=counts.shape[0])
+    # def _ref_psi_with_beta_binomial(self, counts, event_counts,
+    #                                 event, progress=False, niter=1000):
+    #     count_rows = self._join_count_with_event_counts(
+    #         counts, event_counts, event).iterrows()
+    #     if progress:
+    #         count_rows = tqdm(count_rows, total=counts.shape[0])
 
-        for junc, row in count_rows:
-            k = row[self.samples].tolist()
-            n = row[self._event_samples].tolist()
-            sum_k = np.sum(k)
-            sum_n = np.sum(n)
-            median_n = np.median(n)
-            if ';' in row['events']:
-                alpha, beta = fit_alpha_beta(n, k, niter=niter)
-            else:
-                alpha, beta = 100, 0.01
-            psi = alpha / (alpha + beta)
-            yield junc, psi, alpha, beta, sum_k, sum_n, median_n
+    #     for junc, row in count_rows:
+    #         k = row[self.samples].tolist()
+    #         n = row[self._event_samples].tolist()
+    #         sum_k = np.sum(k)
+    #         sum_n = np.sum(n)
+    #         median_n = np.median(n)
+    #         if ';' in row['events']:
+    #             alpha, beta = fit_alpha_beta(n, k, niter=niter)
+    #         else:
+    #             alpha, beta = 100, 0.01
+    #         psi = alpha / (alpha + beta)
+    #         yield junc, psi, alpha, beta, sum_k, sum_n, median_n
 
     def _ref_psi_with_kn(self, counts, event_counts, event):
         count_rows = self._join_count_with_event_counts(
@@ -614,13 +614,13 @@ class SpliceCountTable:
         }).set_index('junctions')
 
     def _ref_psi(self, event_counts, event, splice_site, method, annotation=True):
-        if method == 'beta_binomial':
-            df = pd.DataFrame([
-                i for i in self._ref_psi_with_beta_binomial(
-                    self.counts, event_counts, event)
-            ], columns=['junctions', 'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n']) \
-                .set_index('junctions')
-        elif method == 'k/n':
+        # if method == 'beta_binomial':
+        #     df = pd.DataFrame([
+        #         i for i in self._ref_psi_with_beta_binomial(
+        #             self.counts, event_counts, event)
+        #     ], columns=['junctions', 'ref_psi', 'alpha', 'beta', 'k', 'n', 'median_n']) \
+        #         .set_index('junctions')
+        if method == 'k/n':
             df = self._ref_psi_with_kn(
                 self.counts, event_counts, event)
         else:
