@@ -73,6 +73,7 @@ Check [notebooks/example.ipynb](https://github.com/gagneurlab/splicemap/blob/mas
 
 
 ### Download precomputed SpliceMaps from Zenodo
+Precomputed SpliceMaps can be downloaded from Zenodo for [hg19](https://zenodo.org/record/7821509) and [hg38](https://zenodo.org/record/6408906). 
 ```bash
 splicemap_download --version {version} --splicemap_dir {output_dir}
 ```
