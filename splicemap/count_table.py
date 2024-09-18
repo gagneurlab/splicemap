@@ -102,6 +102,12 @@ class SpliceCountTable:
         self._annotation_exploded = None
         self._gene_expression_median = None
 
+        self._gmm_junction = None
+        self._gmm_event5 = None
+        self._gmm_event3 = None
+        self._gmm_info3 = None
+        self._gmm_info5 = None
+
     @staticmethod
     def validate(df):
         return SpliceCountTable._validate_columns(df.columns)
@@ -570,6 +576,153 @@ class SpliceCountTable:
     def event3_count_filter(self):
         return self._event_count_filter(
             self.event3_counts, self.event3)
+        
+    def _gaussian_mixture_info_per_row(self, counts):
+        mat = np.log(counts.astype(float) + 1).values.reshape(-1, 1)
+        
+        # Fit GMMs with 1 and 2 components
+        gmm_1 = GaussianMixture(n_components=1).fit(mat)
+        gmm_2 = GaussianMixture(n_components=2).fit(mat)
+        gmm_3 = GaussianMixture(n_components=3).fit(mat)
+        # Calculate BIC for each model
+        bic_1 = gmm_1.bic(mat)
+        bic_2 = gmm_2.bic(mat)
+        bic_3 = gmm_3.bic(mat)
+        # Choose the model with the lower BIC (or AIC)
+        if bic_1 < bic_2:
+            best_gmm = gmm_1
+            n_components = 1
+        else:
+            best_gmm = gmm_2
+            n_components = 2
+        # You can now use best_gmm to get the parameters and predictions
+        labels = best_gmm.predict(mat)
+        # Get the centers (means) and standard deviations (sqrt of variances)
+        centers_log = best_gmm.means_.flatten()
+        stds_log = np.sqrt(best_gmm.covariances_).flatten()
+        centers_natural = np.exp(centers_log) - 1
+        stds_natural = np.exp(stds_log)
+        
+        # mode1 is not expressed, mode2 is expressed
+        if n_components == 1:
+            if centers_natural[0] == 0:
+                num_samples_mode1 = len(labels)
+                num_samples_mode2 = 0
+                fraction_mode1 = 1
+                fraction_mode2 = 0
+                center_mode1 = centers_natural[0]
+                center_mode2 = None
+                std_mode1 = stds_natural[0]
+                std_mode2 = None
+            else:
+                num_samples_mode1 = 0
+                num_samples_mode2 = len(labels)
+                fraction_mode1 = 0
+                fraction_mode2 = 1
+                center_mode1 = None
+                center_mode2 = centers_natural[0]
+                std_mode1 = None
+                std_mode2 = stds_natural[0]
+        else:
+            num_samples_mode1 = (labels == labels[mat.argmin()]).sum()
+            num_samples_mode2 = (labels == labels[mat.argmax()]).sum()
+            fraction_mode1 = num_samples_mode1 / len(labels)
+            fraction_mode2 = num_samples_mode2 / len(labels)
+            center_mode1 = centers_natural[labels[mat.argmin()]]
+            center_mode2 = centers_natural[labels[mat.argmax()]]
+            std_mode1 = stds_natural[labels[mat.argmin()]]
+            std_mode2 = stds_natural[labels[mat.argmax()]]
+
+        # Optinal, fit up to 3 gaussians and report best fit
+        bic_scores = [bic_1, bic_2, bic_3]
+        # Select the best model based on the lowest BIC
+        best_gmm_index = np.argmin(bic_scores)
+        best_n_components = best_gmm_index + 1
+            
+        return pd.Series({
+            'best_n_components': best_n_components,
+            'n_components': n_components,
+            'center_mode1': center_mode1,
+            'center_mode2': center_mode2,
+            'std_mode1': std_mode1,
+            'std_mode2': std_mode2,
+            'num_samples_mode1': num_samples_mode1,
+            'num_samples_mode2': num_samples_mode2,
+            'fraction_mode1': fraction_mode1,
+            'fraction_mode2': fraction_mode2
+        })
+
+    def _gaussian_mixture_info_junction(self):
+        """Apply Gaussian Mixture Model analysis to each junction (k counts) and store the info."""
+        gmm_info = self.counts.apply(self._gaussian_mixture_info_per_row, axis=1)
+
+        # Add the suffix '_k' to the columns to indicate junction-level GMM info
+        cols = [f"{col}_k" for col in gmm_info.columns]
+        gmm_info.columns = cols
+
+        # Join the GMM info to the main dataframe (self.df)
+        self._gmm_junction = gmm_info[cols]
+
+        return self._gmm_junction
+
+    @property
+    def gmm_junction(self):
+        if self._gmm_junction is None:
+            self._gmm_junction = self._gaussian_mixture_info_junction()
+        return self._gmm_junction
+
+    def _gaussian_mixture_info_event5(self):
+        """Apply Gaussian Mixture Model analysis to each event (n counts) and store the info."""
+        gmm_info = self.event5_counts.apply(self._gaussian_mixture_info_per_row, axis=1)
+
+        # Add the suffix '_n' to the columns to indicate event-level GMM info
+        cols = [f"{col}_n5" for col in gmm_info.columns]
+        gmm_info.columns = cols
+
+        # Join the GMM info to the main dataframe (self.df)
+        self._gmm_event5 = gmm_info[cols]
+
+        return self._gmm_event5
+
+    @property
+    def gmm_event5(self):
+        if self._gmm_event5 is None:
+            self._gmm_event5 = self._gaussian_mixture_info_event5()
+        return self._gmm_event5
+
+    def _gaussian_mixture_info_event3(self):
+        """Apply Gaussian Mixture Model analysis to each event (n counts) and store the info."""
+        gmm_info = self.event3_counts.apply(self._gaussian_mixture_info_per_row, axis=1)
+
+        # Add the suffix '_n' to the columns to indicate event-level GMM info
+        cols = [f"{col}_n3" for col in gmm_info.columns]
+        gmm_info.columns = cols
+
+        # Join the GMM info to the main dataframe (self.df)
+        self._gmm_event3 = gmm_info[cols]
+
+        return self._gmm_event3
+
+    @property
+    def gmm_event3(self):
+        if self._gmm_event3 is None:
+            self._gmm_event3 = self._gaussian_mixture_info_event3()
+        return self._gmm_event3
+
+    @property
+    def gmm_info3(self):
+        if self._gmm_info3 is None:
+            self._gmm_info3 = self.gmm_junction.join(self.event3) \
+                                                .join(self.gmm_event3, on='events', rsuffix='_gmm_info5')
+        return self._gmm_info3
+
+    @property
+    def gmm_info5(self):
+        if self._gmm_info5 is None:
+            self._gmm_info5 = self.gmm_junction.join(self.event5) \
+                                                .join(self.gmm_event5, on='events', rsuffix='_gmm_info5')
+        return self._gmm_info5
+    
 
     def _join_count_with_event_counts(self, counts, event_counts, event):
         return counts.join(event) \
@@ -605,15 +758,21 @@ class SpliceCountTable:
         k = count_rows[self.samples].sum(axis=1)
         n = count_rows[self._event_samples].sum(axis=1)
         median_n = count_rows[self._event_samples].median(axis=1)
+        median_k = count_rows[self.samples].median(axis=1)
+        mean_n = count_rows[self._event_samples].mean(axis=1)
+        mean_k = count_rows[self.samples].mean(axis=1)
         return pd.DataFrame({
             'junctions': count_rows.index,
             'ref_psi': k / n,
             'k': k,
             'n': n,
-            'median_n': median_n
+            'median_n': median_n,
+            'median_k': median_k,
+            'mean_n': mean_n,
+            'mean_k': mean_k,
         }).set_index('junctions')
 
-    def _ref_psi(self, event_counts, event, splice_site, method, annotation=True):
+    def _ref_psi(self, event_counts, event, splice_site, method, annotation=True, gmm_info='no_gmm_info'):
         if method == 'beta_binomial':
             df = pd.DataFrame([
                 i for i in self._ref_psi_with_beta_binomial(
@@ -628,6 +787,15 @@ class SpliceCountTable:
 
         df = self.junction_df.join(splice_site).join(event).join(df)
 
+        if gmm_info == 'gmm_info5':
+            df = df.join(self.gmm_info5, rsuffix='_gmm_info5')
+        elif gmm_info == 'gmm_info3':
+            df = df.join(self.gmm_info3, rsuffix='_gmm_info3')
+        elif gmm_info == 'no_gmm_info':
+            pass
+        else:
+            raise ValueError('gmm_info name %s is not valid' % gmm_info)
+            
         if annotation:
             df = df.join(self.annotation)
             df = df[~df.index.get_level_values('gene_id').isna()]
@@ -638,14 +806,14 @@ class SpliceCountTable:
 
         return df
 
-    def ref_psi5(self, method='k/n', annotation=True):
+    def ref_psi5(self, method='k/n', annotation=True, gmm_info='no_gmm_info'):
         return SpliceMap(self._ref_psi(self.event5_counts, self.event5, self.splice_site5,
-                                       method=method, annotation=annotation),
+                                       method=method, annotation=annotation, gmm_info=gmm_info),
                          name=self.name)
 
-    def ref_psi3(self, method='k/n', annotation=True):
+    def ref_psi3(self, method='k/n', annotation=True, gmm_info='no_gmm_info'):
         return SpliceMap(self._ref_psi(self.event3_counts, self.event3, self.splice_site3,
-                                       method=method, annotation=annotation),
+                                       method=method, annotation=annotation, gmm_info=gmm_info),
                          name=self.name)
 
     def _psi(self, event_counts, event):
