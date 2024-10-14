@@ -40,7 +40,6 @@ SpliceMaps contain the following information:
 | weak_site_donor | Donor site is not annotated in Gencode (binary) |
 | weak_site_acceptor | Acceptor site is not annotated in Gencode (binary) |
 
-
 ## Installation
 -----------------
 Clone git repository of splicemap:
@@ -78,3 +77,6 @@ Precomputed SpliceMaps can be downloaded from Zenodo for [hg19](https://zenodo.o
 splicemap_download --version {version} --splicemap_dir {output_dir}
 ```
 Supported versions: 'gtex_v8' (hg38) and 'gtex_v7' (hg19).
+
+## License
+The source code to create and use SpliceMaps is under [MIT license](https://github.com/gagneurlab/splicemap/blob/master/license/MIT.txt). Pre-computed SpliceMaps are under [MIT license](https://github.com/gagneurlab/splicemap/blob/master/license/MIT.txt).
