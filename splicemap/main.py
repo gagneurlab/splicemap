@@ -3,6 +3,10 @@ import click
 import tarfile
 import requests
 from tqdm import tqdm
+import os
+import zipfile
+import tempfile
+import re
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -115,6 +119,10 @@ zenodo_base_url = {
     'gtex_v7': 'https://zenodo.org/record/7821509/files/',
 }
 
+dev_splicemap_url = {
+    'gtex_v7': 'https://zenodo.org/record/15693604/files/devSpliceMap_hg19.zip'
+}
+
 def complete_url(tissue, psi, gtex_version):
     return zenodo_base_url[gtex_version] + tissue + '_splicemap_' + psi + '_method%3Dkn_event_filter%3Dmedian_cutoff.csv.gz?download=1'
 
@@ -163,3 +171,34 @@ def splicemap_download(version, splicemap_dir, tissues=None):
                 _download(url, splicemap_dir)
         else:
             _download(url, splicemap_dir)
+
+@click.command()
+@click.option('--version', help='SpliceMap version (currently devSpliceMaps only for gtex_v7 (hg19) supported)')
+@click.option('--splicemap_dir', help='Path to download SpliceMaps')
+@click.option('--tissues', multiple=True, help='List of tissue names to download')
+def dev_splicemap_download(version, splicemap_dir, tissues=None):
+
+    if version not in splicemap_url:
+        raise ValueError(f'Unsupported version: {version}')
+    elif version != 'gtex_v7':
+        raise ValueError(f'Only gtex_v7 is supported at the moment.')
+
+    os.makedirs(splicemap_dir, exist_ok=True)
+
+    print(f'Downloading and extracting SpliceMaps for version: {version}')
+
+    response = requests.get(dev_splicemap_url[version], stream=True)
+    if response.status_code != 200:
+        raise RuntimeError(f"Failed to download from {dev_splicemap_url[version]}")
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
+        for chunk in response.iter_content(chunk_size=8192):
+            tmp.write(chunk)
+        tmp_path = tmp.name
+
+    with zipfile.ZipFile(tmp_path, 'r') as z:
+        print(f"Extracting all files to: {splicemap_dir}")
+        z.extractall(path=splicemap_dir)
+
+    os.remove(tmp_path)
+    print("Done.")
